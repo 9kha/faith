@@ -81,6 +81,15 @@
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
+  --brand-primary: #0f172a;
+  --brand-secondary: #1e293b;
+  --brand-accent: #2563eb;
+  --brand-background: #ffffff;
+  --brand-text: #334155;
+  --brand-heading-font: var(--font-geist-sans);
+  --brand-body-font: var(--font-geist-sans);
+  --brand-radius: 0.5rem;
+  --brand-spacing: 1rem;
 }
 
 .dark {
