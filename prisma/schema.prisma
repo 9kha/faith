@@ -1,0 +1,1249 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+}
+
+enum LeadSource {
+  WEBSITE
+  WHATSAPP
+  CALL
+  REFERRAL
+  WALK_IN
+  CAMPAIGN
+  PARTNER
+}
+
+enum LeadStatus {
+  NEW
+  CONTACTED
+  SITE_VISIT_SCHEDULED
+  SITE_VISIT_DONE
+  NEGOTIATION
+  BOOKED
+  CLOSED_WON
+  CLOSED_LOST
+}
+
+enum ClientType {
+  BUYER
+  TENANT
+  OWNER
+}
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+  COMPLETED
+}
+
+enum PaymentMode {
+  CASH
+  CHEQUE
+  BANK_TRANSFER
+  UPI
+  CARD
+  FINANCE
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  OVERDUE
+  FAILED
+  REFUNDED
+}
+
+enum CommissionStatus {
+  PENDING
+  APPROVED
+  RECEIVED
+  PAID
+  CANCELLED
+}
+
+enum ProjectStatus {
+  UPCOMING
+  NEW_LAUNCH
+  UNDER_CONSTRUCTION
+  READY_TO_MOVE
+  SOLD_OUT
+}
+
+enum ProjectType {
+  APARTMENT
+  VILLA
+  PLOTTED
+  COMMERCIAL
+  TOWNSHIP
+}
+
+enum PropertyListingType {
+  SALE
+  RENT
+  LEASE
+}
+
+enum PropertyCategory {
+  FLAT
+  VILLA
+  PLOT
+  SHOP
+  OFFICE
+}
+
+enum PropertyStatus {
+  AVAILABLE
+  SOLD
+  RENTED
+  UNDER_OFFER
+  WITHDRAWN
+}
+
+enum UnitStatus {
+  AVAILABLE
+  SOLD
+  BLOCKED
+  HOLD
+  RENTED
+}
+
+enum PageStatus {
+  DRAFT
+  PUBLISHED
+  SCHEDULED
+  ARCHIVED
+}
+
+enum PageTemplate {
+  DEFAULT
+  LANDING
+  ABOUT
+  CONTACT
+  PROJECT_LISTING
+  PROPERTY_LISTING
+  BUILDER_LISTING
+  BLOG_LISTING
+}
+
+enum MenuItemType {
+  PAGE
+  PROJECT
+  PROPERTY
+  BUILDER
+  BLOG
+  EXTERNAL
+}
+
+enum BlogPostStatus {
+  DRAFT
+  PUBLISHED
+  SCHEDULED
+  ARCHIVED
+}
+
+enum MediaType {
+  IMAGE
+  PDF
+  VIDEO
+  DOCUMENT
+}
+
+enum AmenityGroup {
+  SECURITY
+  COMFORT
+  RECREATION
+  PARKING
+  LOCATION
+  OTHER
+}
+
+enum SettingGroup {
+  BRANDING
+  SMTP
+  INTEGRATIONS
+  THEME
+  SYSTEM
+}
+
+enum ActivityLogAction {
+  CREATE
+  UPDATE
+  DELETE
+  PUBLISH
+  UNPUBLISH
+}
+
+enum SiteVisitStatus {
+  SCHEDULED
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+}
+
+enum PartnerStatus {
+  PENDING
+  APPROVED
+  BLOCKED
+}
+
+enum InvoiceStatus {
+  PENDING
+  PAID
+  PARTIAL
+  OVERDUE
+  CANCELLED
+}
+
+model User {
+  id                String   @id @default(uuid())
+  name              String
+  email             String   @unique
+  phone             String?
+  passwordHash      String
+  roleId            String
+  status            UserStatus @default(ACTIVE)
+  lastLoginAt       DateTime?
+  twoFactorSecret   String?
+  twoFactorEnabled  Boolean  @default(false)
+  emailVerified     DateTime?
+  image             String?
+  passwordResetToken String?
+  passwordResetExpires DateTime?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  deletedAt         DateTime?
+
+  role              Role              @relation(fields: [roleId], references: [id])
+  assignments       Lead[]            @relation("LeadAssignee")
+  activities        LeadActivity[]
+  bookings          Booking[]         @relation("BookingAssignee")
+  activityLogs      ActivityLog[]
+  siteVisits        SiteVisit[]       @relation("SiteVisitOrganizer")
+  blogPosts         BlogPost[]        @relation("BlogAuthor")
+  passwordResets    PasswordReset[]
+  channelPartner    ChannelPartner?
+
+  @@index([roleId])
+  @@index([email])
+  @@index([status])
+  @@index([deletedAt])
+}
+
+model Role {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  description String?
+  level       Int      @default(0)
+  isSystem    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  permissions RolePermission[]
+  users       User[]
+
+  @@index([name])
+  @@index([level])
+}
+
+model Permission {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  module      String
+  action      String
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  rolePermissions RolePermission[]
+
+  @@index([module, action])
+}
+
+model RolePermission {
+  id          String   @id @default(uuid())
+  roleId      String
+  permissionId String
+  granted     Boolean  @default(true)
+  createdAt   DateTime @default(now())
+
+  role        Role     @relation(fields: [roleId], references: [id])
+  permission  Permission @relation(fields: [permissionId], references: [id])
+
+  @@unique([roleId, permissionId])
+  @@index([roleId])
+}
+
+model Builder {
+  id               String   @id @default(uuid())
+  name             String
+  slug             String   @unique
+  logoId           String?
+  about            String?
+  reraNo           String?
+  website          String?
+  contactName      String?
+  contactPhone     String?
+  contactEmail     String?
+  address          String?
+  commissionTerms  String?
+  agreementDocId   String?
+  status           String   @default("active")
+  seoTitle         String?
+  seoDescription   String?
+  featured         Boolean  @default(false)
+  sortOrder        Int      @default(0)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  deletedAt        DateTime?
+
+  logo             Media?     @relation("BuilderLogo", fields: [logoId], references: [id], onDelete: SetNull)
+  agreementDoc     Media?     @relation("BuilderAgreementDoc", fields: [agreementDocId], references: [id], onDelete: SetNull)
+  projects         Project[]
+  properties       Property[]
+  builderInvoices  BuilderInvoice[]
+
+  @@index([slug])
+  @@index([status])
+  @@index([featured])
+  @@index([deletedAt])
+}
+
+model Project {
+  id                String   @id @default(uuid())
+  builderId         String
+  name              String
+  slug              String   @unique
+  type              ProjectType @default(APARTMENT)
+  status            ProjectStatus @default(UPCOMING)
+  city              String
+  locality          String
+  pincode           String?
+  lat               Float?
+  lng               Float?
+  reraNo            String?
+  priceMin          Int?
+  priceMax          Int?
+  areaMin           Float?
+  areaMax           Float?
+  possessionDate    DateTime?
+  launchDate        DateTime?
+  totalUnits        Int?
+  towers            Int?
+  description       String?
+  highlights        Json?
+  specifications    Json?
+  paymentPlan       Json?
+  faqs              Json?
+  videoUrls         Json?
+  virtualTourUrl    String?
+  brochureId        String?
+  featured          Boolean  @default(false)
+  sortOrder         Int      @default(0)
+  publishedAt       DateTime?
+  seoTitle          String?
+  seoDescription    String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  deletedAt         DateTime?
+
+  builder           Builder   @relation(fields: [builderId], references: [id])
+  brochure          Media?    @relation("ProjectBrochure", fields: [brochureId], references: [id], onDelete: SetNull)
+  towersRel         Tower[]
+  units             Unit[]
+  amenities         ProjectAmenity[]
+  nearbyPlaces      NearbyProjectPlace[]
+  properties        Property[]
+  payments          Payment[] @relation("ProjectPayment")
+  bookings          Booking[]
+  leads             Lead[]
+  siteVisits        SiteVisit[] @relation("ProjectSiteVisit")
+
+  @@index([builderId])
+  @@index([slug])
+  @@index([status])
+  @@index([type])
+  @@index([city, locality])
+  @@index([featured])
+  @@index([publishedAt])
+  @@index([deletedAt])
+  @@index([priceMin, priceMax])
+}
+
+model Tower {
+  id        String   @id @default(uuid())
+  projectId String
+  name      String
+  floors    Int      @default(1)
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id])
+  units   Unit[]
+
+  @@index([projectId])
+}
+
+model Unit {
+  id          String   @id @default(uuid())
+  projectId   String
+  towerId     String?
+  unitNo      String
+  floor       Int?
+  bhk         String?
+  area        Float?
+  facing      String?
+  price       Int?
+  status      UnitStatus @default(AVAILABLE)
+  holdUntil   DateTime?
+  featured    Boolean  @default(false)
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  deletedAt   DateTime?
+
+  project Project @relation(fields: [projectId], references: [id])
+  tower   Tower?  @relation(fields: [towerId], references: [id], onDelete: SetNull)
+  bookings Booking[]
+
+  @@index([projectId])
+  @@index([towerId])
+  @@index([status])
+  @@index([unitNo])
+  @@index([deletedAt])
+}
+
+model Property {
+  id                String   @id @default(uuid())
+  projectId         String?
+  builderId         String?
+  listingType       PropertyListingType @default(SALE)
+  category          PropertyCategory @default(FLAT)
+  title             String
+  slug              String   @unique
+  price             Int?
+  rent              Int?
+  deposit           Int?
+  maintenance       Int?
+  bhk               String?
+  baths             Int?
+  area              Float?
+  areaUnit          String?
+  floor             Int?
+  totalFloors       Int?
+  facing            String?
+  furnishing        String?
+  ageYears          Int?
+  possession        String?
+  city              String
+  locality          String
+  lat               Float?
+  lng               Float?
+  description       String?
+  ownerName         String?
+  ownerPhone        String?
+  status            PropertyStatus @default(AVAILABLE)
+  featured          Boolean  @default(false)
+  verified          Boolean  @default(false)
+  publishedAt       DateTime?
+  seoTitle          String?
+  seoDescription    String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  deletedAt         DateTime?
+
+  project   Project?   @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  builder   Builder?   @relation(fields: [builderId], references: [id], onDelete: SetNull)
+  amenities PropertyAmenity[]
+  nearby    NearbyPropertyPlace[]
+  leads     Lead[]
+  bookings  Booking[]
+  payments  Payment[] @relation("PropertyPayment")
+  siteVisits SiteVisit[] @relation("PropertySiteVisit")
+
+  @@index([projectId])
+  @@index([builderId])
+  @@index([slug])
+  @@index([listingType])
+  @@index([category])
+  @@index([status])
+  @@index([city, locality])
+  @@index([featured])
+  @@index([publishedAt])
+  @@index([deletedAt])
+}
+
+model Amenity {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  icon      String?
+  group     AmenityGroup @default(OTHER)
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  projectLinks ProjectAmenity[]
+  propertyLinks PropertyAmenity[]
+
+  @@index([name])
+  @@index([group])
+}
+
+model ProjectAmenity {
+  id        String   @id @default(uuid())
+  projectId String
+  amenityId String
+
+  project Project @relation(fields: [projectId], references: [id])
+  amenity Amenity @relation(fields: [amenityId], references: [id])
+
+  @@unique([projectId, amenityId])
+  @@index([projectId])
+}
+
+model PropertyAmenity {
+  id         String   @id @default(uuid())
+  propertyId String
+  amenityId  String
+
+  property Property @relation(fields: [propertyId], references: [id])
+  amenity  Amenity  @relation(fields: [amenityId], references: [id])
+
+  @@unique([propertyId, amenityId])
+  @@index([propertyId])
+}
+
+model NearbyProjectPlace {
+  id        String   @id @default(uuid())
+  projectId String
+  type      String
+  name      String
+  distanceKm Float
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+
+  project Project @relation(fields: [projectId], references: [id])
+  @@index([projectId])
+}
+
+model NearbyPropertyPlace {
+  id         String   @id @default(uuid())
+  propertyId String
+  type       String
+  name       String
+  distanceKm Float
+  sortOrder  Int      @default(0)
+  createdAt  DateTime @default(now())
+
+  property Property @relation(fields: [propertyId], references: [id])
+  @@index([propertyId])
+}
+
+model Media {
+  id          String   @id @default(uuid())
+  type        MediaType @default(IMAGE)
+  url         String
+  path        String?
+  mime        String
+  size        Int
+  width       Int?
+  height      Int?
+  alt         String?
+  caption     String?
+  folderId    String?
+  tags        Json?
+  focalPointX Float?
+  focalPointY Float?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  deletedAt   DateTime?
+
+  folder      MediaFolder? @relation(fields: [folderId], references: [id], onDelete: SetNull)
+  usages      Mediable[]
+
+  // Reverse relations for direct Media references
+  builderLogos         Builder[]        @relation("BuilderLogo")
+  builderAgreementDocs Builder[]        @relation("BuilderAgreementDoc")
+  projectBrochures     Project[]        @relation("ProjectBrochure")
+  paymentReceipts      Payment[]
+  clientPanDocuments   Client[]
+  blogPostFeaturedImages BlogPost[]
+  seoOgImages          SeoMeta[]        @relation("SeoOgImage")
+  seoTwitterImages     SeoMeta[]        @relation("SeoTwitterImage")
+  testimonialImages    Testimonial[]
+
+  @@index([type])
+  @@index([folderId])
+  @@index([deletedAt])
+  @@index([mime])
+}
+
+// Media reverse relations - defined on the referencing models only
+// Media is a shared resource; referencing models hold the foreign key
+
+model MediaFolder {
+  id        String   @id @default(uuid())
+  name      String
+  parentId  String?
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  parent    MediaFolder?   @relation("FolderHierarchy", fields: [parentId], references: [id], onDelete: SetNull)
+  children  MediaFolder[]  @relation("FolderHierarchy")
+  media     Media[]
+
+  @@index([parentId])
+}
+
+model Mediable {
+  id        String   @id @default(uuid())
+  mediaId   String
+  entityType String
+  entityId  String
+  role      String?
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+
+  media Media @relation(fields: [mediaId], references: [id])
+
+  @@index([entityType, entityId])
+  @@index([mediaId])
+  @@unique([entityType, entityId, role, sortOrder])
+}
+
+model Lead {
+  id                String   @id @default(uuid())
+  name              String
+  phone             String
+  email             String?
+  source            LeadSource @default(WEBSITE)
+  utmSource         String?
+  utmMedium         String?
+  utmCampaign       String?
+  refCode           String?
+  projectId         String?
+  propertyId        String?
+  message           String?
+  budget            Int?
+  status            LeadStatus @default(NEW)
+  assignedToId      String?
+  partnerId         String?
+  nextFollowUpAt    DateTime?
+  lostReason        String?
+  clientId          String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  deletedAt         DateTime?
+
+  assignedTo   User?           @relation("LeadAssignee", fields: [assignedToId], references: [id], onDelete: SetNull)
+  partner      ChannelPartner? @relation(fields: [partnerId], references: [id], onDelete: SetNull)
+  project      Project?        @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  property     Property?       @relation(fields: [propertyId], references: [id], onDelete: SetNull)
+  client       Client?         @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  activities   LeadActivity[]
+  siteVisits   SiteVisit[]     @relation("LeadSiteVisit")
+  bookings     Booking[]
+
+  @@index([phone])
+  @@index([email])
+  @@index([source])
+  @@index([status])
+  @@index([assignedToId])
+  @@index([partnerId])
+  @@index([projectId])
+  @@index([propertyId])
+  @@index([createdAt])
+  @@index([deletedAt])
+  @@index([refCode])
+}
+
+model LeadActivity {
+  id        String   @id @default(uuid())
+  leadId    String
+  userId    String?
+  type      String
+  content   String?
+  meta      Json?
+  createdAt DateTime @default(now())
+
+  lead Lead    @relation(fields: [leadId], references: [id])
+  user User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([leadId])
+  @@index([userId])
+  @@index([createdAt])
+}
+
+model SiteVisit {
+  id             String   @id @default(uuid())
+  leadId         String
+  projectId      String?
+  propertyId     String?
+  scheduledAt    DateTime
+  status         SiteVisitStatus @default(SCHEDULED)
+  feedback       String?
+  rating         Int?
+  organizedById  String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  lead          Lead     @relation("LeadSiteVisit", fields: [leadId], references: [id])
+  project       Project? @relation("ProjectSiteVisit", fields: [projectId], references: [id], onDelete: SetNull)
+  property      Property? @relation("PropertySiteVisit", fields: [propertyId], references: [id], onDelete: SetNull)
+  organizedBy   User?    @relation("SiteVisitOrganizer", fields: [organizedById], references: [id], onDelete: SetNull)
+
+  @@index([leadId])
+  @@index([scheduledAt])
+  @@index([status])
+}
+
+model Client {
+  id          String   @id @default(uuid())
+  name        String
+  phone       String
+  email       String?
+  type        ClientType @default(BUYER)
+  address     String?
+  panId       String?
+  notes       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  deletedAt   DateTime?
+
+  panDocument Media?   @relation(fields: [panId], references: [id], onDelete: SetNull)
+  leads       Lead[]
+  bookings    Booking[] @relation("ClientBooking")
+
+  @@index([phone])
+  @@index([email])
+  @@index([type])
+  @@index([deletedAt])
+}
+
+model Booking {
+  id             String   @id @default(uuid())
+  clientId       String
+  projectId      String?
+  unitId         String?
+  propertyId     String?
+  leadId         String?
+  agreementValue Int
+  tokenAmount    Int
+  discount       Int
+  bookingDate    DateTime
+  status         BookingStatus @default(PENDING)
+  assignedToId   String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  client   Client @relation("ClientBooking", fields: [clientId], references: [id])
+  project  Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  unit     Unit?   @relation(fields: [unitId], references: [id], onDelete: SetNull)
+  property Property? @relation(fields: [propertyId], references: [id], onDelete: SetNull)
+  lead     Lead?   @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  assignedTo User? @relation("BookingAssignee", fields: [assignedToId], references: [id], onDelete: SetNull)
+  schedules PaymentSchedule[]
+  payments  Payment[] @relation("BookingPayment")
+  commission Commission?
+  builderInvoice BuilderInvoice?
+
+  @@index([clientId])
+  @@index([projectId])
+  @@index([propertyId])
+  @@index([leadId])
+  @@index([status])
+  @@index([bookingDate])
+  @@index([assignedToId])
+}
+
+model PaymentSchedule {
+  id          String   @id @default(uuid())
+  bookingId   String
+  title       String
+  amount      Int
+  dueDate     DateTime
+  status      PaymentStatus @default(PENDING)
+  paidAmount  Int @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  booking Booking @relation(fields: [bookingId], references: [id])
+  payments Payment[] @relation("SchedulePayment")
+
+  @@index([bookingId])
+  @@index([dueDate])
+  @@index([status])
+}
+
+model Payment {
+  id             String   @id @default(uuid())
+  bookingId      String
+  scheduleId     String?
+  projectId      String?
+  propertyId     String?
+  amount         Int
+  mode           PaymentMode
+  reference      String?
+  paidAt         DateTime
+  receiptNo      String?
+  receiptMediaId String?
+  notes          String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  booking   Booking @relation("BookingPayment", fields: [bookingId], references: [id])
+  schedule  PaymentSchedule? @relation("SchedulePayment", fields: [scheduleId], references: [id], onDelete: SetNull)
+  project   Project? @relation("ProjectPayment", fields: [projectId], references: [id], onDelete: SetNull)
+  property  Property? @relation("PropertyPayment", fields: [propertyId], references: [id], onDelete: SetNull)
+  receipt   Media?   @relation(fields: [receiptMediaId], references: [id], onDelete: SetNull)
+
+  @@index([bookingId])
+  @@index([scheduleId])
+  @@index([paidAt])
+  @@index([mode])
+}
+
+model CommissionRule {
+  id          String   @id @default(uuid())
+  builderId   String?
+  projectId   String?
+  propertyId  String?
+  type        String
+  value       Float
+  trigger     String
+  partnerSharePercent Float @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  commissions Commission[]
+
+  @@index([builderId])
+  @@index([projectId])
+  @@index([propertyId])
+}
+
+model Commission {
+  id              String   @id @default(uuid())
+  bookingId       String @unique
+  ruleId          String?
+  payeeType       String
+  payeeId         String
+  grossAmount     Int
+  gst             Int
+  tds             Int
+  netAmount       Int
+  status          CommissionStatus @default(PENDING)
+  paidAt          DateTime?
+  reference       String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  booking Booking @relation(fields: [bookingId], references: [id])
+  rule    CommissionRule? @relation(fields: [ruleId], references: [id], onDelete: SetNull)
+
+  @@index([payeeType, payeeId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model BuilderInvoice {
+  id          String   @id @default(uuid())
+  builderId   String
+  bookingId   String @unique
+  amount      Int
+  gst         Int
+  tds         Int
+  netAmount   Int
+  status      InvoiceStatus @default(PENDING)
+  receivedAt  DateTime?
+  reference   String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  builder Builder @relation(fields: [builderId], references: [id])
+  booking Booking @relation(fields: [bookingId], references: [id])
+
+  @@index([builderId])
+  @@index([status])
+}
+
+model ChannelPartner {
+  id               String   @id @default(uuid())
+  userId           String   @unique
+  code             String   @unique
+  company          String?
+  pan              String?
+  bank             Json?
+  status           PartnerStatus @default(PENDING)
+  commissionShare  Float
+  documents        Json?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  user  User @relation(fields: [userId], references: [id])
+  leads Lead[]
+
+  @@index([code])
+  @@index([status])
+}
+
+model Page {
+  id          String   @id @default(uuid())
+  title       String
+  slug        String   @unique
+  template    PageTemplate @default(DEFAULT)
+  content     Json?
+  draftContent Json?
+  status      PageStatus @default(DRAFT)
+  publishedAt DateTime?
+  seoTitle    String?
+  seoDescription String?
+  featured    Boolean  @default(false)
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  deletedAt   DateTime?
+
+  revisions PageRevision[]
+
+  @@index([slug])
+  @@index([status])
+  @@index([template])
+  @@index([deletedAt])
+}
+
+model PageRevision {
+  id        String   @id @default(uuid())
+  pageId    String
+  content   Json?
+  title     String?
+  slug      String?
+  createdAt DateTime @default(now())
+  createdBy String?
+
+  page Page @relation(fields: [pageId], references: [id])
+  @@index([pageId])
+  @@index([createdAt])
+}
+
+model Menu {
+  id        String   @id @default(uuid())
+  name      String
+  slug      String   @unique
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  items MenuItem[]
+
+  @@index([slug])
+}
+
+model MenuItem {
+  id          String   @id @default(uuid())
+  menuId      String
+  parentId    String?
+  label       String
+  type        MenuItemType @default(PAGE)
+  target      String?
+  sortOrder   Int      @default(0)
+  isExternal  Boolean  @default(false)
+  newTab      Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  menu  Menu @relation(fields: [menuId], references: [id])
+  parent MenuItem? @relation("MenuItemChildren", fields: [parentId], references: [id], onDelete: SetNull)
+  children MenuItem[] @relation("MenuItemChildren")
+
+  @@index([menuId])
+  @@index([parentId])
+}
+
+model BlogPost {
+  id          String   @id @default(uuid())
+  title       String
+  slug        String   @unique
+  excerpt     String?
+  content     String?
+  featuredImageId String?
+  authorId    String?
+  categoryId  String?
+  status      BlogPostStatus @default(DRAFT)
+  publishedAt DateTime?
+  readingTime Int?
+  featured    Boolean  @default(false)
+  seoTitle    String?
+  seoDescription String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  deletedAt   DateTime?
+
+  featuredImage Media? @relation(fields: [featuredImageId], references: [id], onDelete: SetNull)
+  author      User?    @relation("BlogAuthor", fields: [authorId], references: [id], onDelete: SetNull)
+  category    BlogCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  tags        BlogPostTag[]
+
+  @@index([slug])
+  @@index([status])
+  @@index([categoryId])
+  @@index([publishedAt])
+  @@index([deletedAt])
+}
+
+model BlogCategory {
+  id        String   @id @default(uuid())
+  name      String
+  slug      String   @unique
+  description String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  posts BlogPost[]
+
+  @@index([slug])
+}
+
+model BlogTag {
+  id        String   @id @default(uuid())
+  name      String
+  slug      String   @unique
+  createdAt DateTime @default(now())
+
+  posts BlogPostTag[]
+
+  @@index([slug])
+}
+
+model BlogPostTag {
+  id        String   @id @default(uuid())
+  postId    String
+  tagId     String
+
+  post  BlogPost @relation(fields: [postId], references: [id])
+  tag   BlogTag  @relation(fields: [tagId], references: [id])
+
+  @@unique([postId, tagId])
+}
+
+model SeoMeta {
+  id             String   @id @default(uuid())
+  entityType     String
+  entityId       String
+  title          String?
+  description    String?
+  focusKeyword   String?
+  canonical      String?
+  robots         String?
+  ogTitle        String?
+  ogDescription  String?
+  ogImageId      String?
+  twitterTitle   String?
+  twitterDescription String?
+  twitterImageId String?
+  schemaJson     Json?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  ogImage Media? @relation("SeoOgImage", fields: [ogImageId], references: [id], onDelete: SetNull)
+  twitterImg Media? @relation("SeoTwitterImage", fields: [twitterImageId], references: [id], onDelete: SetNull)
+
+  @@unique([entityType, entityId])
+  @@index([entityType])
+}
+
+model Redirect {
+  id        String   @id @default(uuid())
+  fromPath  String   @unique
+  toPath    String
+  code      Int      @default(301)
+  hits      Int      @default(0)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([fromPath])
+  @@index([isActive])
+}
+
+model NotFoundLog {
+  id        String   @id @default(uuid())
+  path      String
+  referrer  String?
+  hits      Int      @default(1)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([path])
+  @@index([createdAt])
+}
+
+model Setting {
+  id          String   @id @default(uuid())
+  key         String   @unique
+  value       Json
+  group       SettingGroup @default(SYSTEM)
+  encrypted   Boolean  @default(false)
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([key])
+  @@index([group])
+}
+
+model Testimonial {
+  id          String   @id @default(uuid())
+  name        String
+  role        String?
+  content     String
+  imageId     String?
+  rating      Int?
+  featured    Boolean  @default(false)
+  sortOrder   Int      @default(0)
+  status      String   @default("active")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  image Media? @relation(fields: [imageId], references: [id], onDelete: SetNull)
+
+  @@index([featured])
+  @@index([status])
+}
+
+model Faq {
+  id          String   @id @default(uuid())
+  question    String
+  answer      String
+  category    String?
+  sortOrder   Int      @default(0)
+  featured    Boolean  @default(false)
+  status      String   @default("active")
+  schemaJson  Json?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([category])
+  @@index([featured])
+  @@index([status])
+}
+
+model City {
+  id        String   @id @default(uuid())
+  name      String
+  slug      String   @unique
+  state     String?
+  pincodes  Json?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  localities Locality[]
+
+  @@index([slug])
+  @@index([name])
+}
+
+model Locality {
+  id          String   @id @default(uuid())
+  cityId      String
+  name        String
+  slug        String   @unique
+  pincode     String?
+  avgPriceSqFt Int?
+  landmarks   Json?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  city City @relation(fields: [cityId], references: [id])
+
+  @@index([cityId])
+  @@index([slug])
+  @@index([name])
+}
+
+model EmailLog {
+  id        String   @id @default(uuid())
+  to        String
+  subject   String
+  template  String?
+  status    String
+  error     String?
+  sentAt    DateTime?
+  createdAt DateTime @default(now())
+
+  @@index([status])
+  @@index([createdAt])
+}
+
+model ActivityLog {
+  id        String   @id @default(uuid())
+  userId    String?
+  action    ActivityLogAction
+  entity    String
+  entityId  String
+  before    Json?
+  after     Json?
+  ip        String?
+  createdAt DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([entity, entityId])
+  @@index([action])
+  @@index([createdAt])
+}
+
+model Visit {
+  id        String   @id @default(uuid())
+  sessionId String
+  path      String
+  referrer  String?
+  utmSource String?
+  utmMedium String?
+  utmCampaign String?
+  device    String?
+  country   String?
+  createdAt DateTime @default(now())
+
+  @@index([sessionId])
+  @@index([path])
+  @@index([createdAt])
+}
+
+model VisitAggregate {
+  id        String   @id @default(uuid())
+  date      DateTime @unique
+  visits    Int      @default(0)
+  uniqueVisitors Int @default(0)
+  pageViews Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([date])
+}
+
+model PasswordReset {
+  id        String   @id @default(uuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+  @@index([token])
+  @@index([expiresAt])
+}
