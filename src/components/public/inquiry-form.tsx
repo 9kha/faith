@@ -32,21 +32,6 @@ export function InquiryForm({
   const [isLoading, setIsLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [utmParams, setUtmParams] = useState<UtmParams>({});
-
-  if (typeof window !== "undefined" && !utmParams.utm_source) {
-    const params = new URLSearchParams(window.location.search);
-    const refCookie = document.cookie
-      .split("; ")
-      .find((row) => row.startsWith("ref="))
-      ?.split("=")[1];
-    setUtmParams({
-      utm_source: params.get("utm_source") || undefined,
-      utm_medium: params.get("utm_medium") || undefined,
-      utm_campaign: params.get("utm_campaign") || undefined,
-      ref: refCookie || undefined,
-    });
-  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -67,6 +52,12 @@ export function InquiryForm({
       return;
     }
 
+    const params = new URLSearchParams(window.location.search);
+    const refCookie = document.cookie
+      .split("; ")
+      .find((row) => row.startsWith("ref="))
+      ?.split("=")[1];
+
     try {
       const res = await fetch("/api/leads", {
         method: "POST",
@@ -76,10 +67,10 @@ export function InquiryForm({
           phone,
           email: email || undefined,
           source: "WEBSITE",
-          utmSource: utmParams.utm_source,
-          utmMedium: utmParams.utm_medium,
-          utmCampaign: utmParams.utm_campaign,
-          refCode: utmParams.ref,
+          utmSource: params.get("utm_source") || undefined,
+          utmMedium: params.get("utm_medium") || undefined,
+          utmCampaign: params.get("utm_campaign") || undefined,
+          refCode: refCookie || undefined,
           projectId,
           propertyId,
           message,
@@ -123,48 +114,86 @@ export function InquiryForm({
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Honeypot field - hidden from users, filled by bots */}
           <input
             type="text"
             name="website"
+            tabIndex={-1}
             autoComplete="off"
             style={{ position: "absolute", left: "-9999px", visibility: "hidden" }}
-            tabIndex={-1}
           />
 
           <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">
               <label className="text-xs font-medium text-gray-700">Full Name</label>
-              <Input placeholder="John Doe" name="name" required className="h-9" />
+              <Input
+                placeholder="John Doe"
+                name="name"
+                required
+                className="h-9"
+              />
             </div>
             <div className="space-y-2">
               <label className="text-xs font-medium text-gray-700">Phone</label>
-              <Input placeholder="+91 98765 43210" type="tel" name="phone" required className="h-9" />
+              <Input
+                placeholder="+91 98765 43210"
+                type="tel"
+                name="phone"
+                required
+                className="h-9"
+              />
             </div>
           </div>
           <div className="space-y-2">
             <label className="text-xs font-medium text-gray-700">Email</label>
-            <Input placeholder="john@example.com" type="email" name="email" className="h-9" />
+            <Input
+              placeholder="john@example.com"
+              type="email"
+              name="email"
+              className="h-9"
+            />
           </div>
           {projectName || propertyTitle ? (
             <div className="space-y-2">
               <label className="text-xs font-medium text-gray-700">Interested In</label>
-              <Input placeholder={projectName || propertyTitle || "Property"} name="interest" readOnly className="h-9 bg-gray-50" />
+              <Input
+                placeholder={projectName || propertyTitle || "Property"}
+                name="interest"
+                readOnly
+                className="h-9 bg-gray-50"
+              />
             </div>
           ) : null}
           <div className="space-y-2">
             <label className="text-xs font-medium text-gray-700">Message</label>
-            <textarea placeholder="Tell us about your requirements..." name="message" rows={3} className="w-full px-3 py-2 rounded border border-input text-sm" />
+            <textarea
+              placeholder="Tell us about your requirements..."
+              name="message"
+              rows={3}
+              className="w-full px-3 py-2 rounded border border-input text-sm"
+            />
           </div>
           <div className="space-y-2">
             <label className="text-xs font-medium text-gray-700">Budget (₹)</label>
-            <Input placeholder="e.g. 5000000" type="number" name="budget" className="h-9" />
+            <Input
+              placeholder="e.g. 5000000"
+              type="number"
+              name="budget"
+              className="h-9"
+            />
           </div>
 
           {error && (
-            <div className="rounded-md bg-red-50 p-3 text-sm text-red-700">{error}</div>
+            <div className="rounded-md bg-red-50 p-3 text-sm text-red-700">
+              {error}
+            </div>
           )}
 
-          <Button type="submit" className="w-full" disabled={isLoading}>
+          <Button
+            type="submit"
+            className="w-full"
+            disabled={isLoading}
+          >
             {isLoading ? "Submitting..." : "Submit Enquiry"}
           </Button>
         </form>

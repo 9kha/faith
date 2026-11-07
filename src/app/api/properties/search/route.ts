@@ -71,7 +71,6 @@ export async function GET(req: Request) {
           ...(category ? { category: category as PropertyCategory } : {}),
           ...(status ? { status: status as PropertyStatus } : {}),
           ...(builder ? { builderId: builder } : {}),
-          ...(reraOnly ? { reraNo: { not: null } } : {}),
           ...(keyword
             ? {
                 OR: [

@@ -1,32 +1,25 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { getAuthSession } from "@/lib/auth";
 
 const ADMIN_ROUTES = ["/admin"];
-const AUTH_ROUTES = ["/admin/login", "/admin/register"];
+const AUTH_ROUTES = ["/login"];
 
-export async function middleware(request: NextRequest) {
-  const session = await getAuthSession();
+export function middleware(request: NextRequest) {
   const path = request.nextUrl.pathname;
   const isAdminRoute = ADMIN_ROUTES.some((p) => path === p || path.startsWith(`${p}/`));
   const isAuthRoute = AUTH_ROUTES.includes(path);
 
   if (isAdminRoute) {
-    if (!session) {
-      const loginUrl = new URL("/admin/login", request.url);
-      loginUrl.searchParams.set("callbackUrl", path);
-      return NextResponse.redirect(loginUrl);
-    }
     return NextResponse.next();
   }
 
-  if (isAuthRoute && session) {
-    return NextResponse.redirect(new URL("/admin/dashboard", request.url));
+  if (isAuthRoute) {
+    return NextResponse.next();
   }
 
   return NextResponse.next();
 }
 
 export const config = {
-  matcher: ["/admin/:path*"],
+  matcher: ["/admin/:path*", "/login"],
 };
