@@ -10,9 +10,7 @@ export function BrandingTokensProvider({
   children: React.ReactNode;
   tokens: BrandingTokens | null;
 }) {
-  const [loadedTokens, setLoadedTokens] = useState<BrandingTokens | null>(
-    tokens
-  );
+  const [loadedTokens] = useState<BrandingTokens | null>(tokens);
 
   useEffect(() => {
     if (!loadedTokens) return;
