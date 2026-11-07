@@ -1,28 +1,35 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getBrandingTokens, BrandingTokens } from "@/lib/settings";
+import { BrandingTokens } from "@/lib/settings";
 
-export function BrandingTokensProvider({ children }: { children: React.ReactNode }) {
-  const [tokens, setTokens] = useState<BrandingTokens | null>(null);
+export function BrandingTokensProvider({
+  children,
+  tokens,
+}: {
+  children: React.ReactNode;
+  tokens: BrandingTokens | null;
+}) {
+  const [loadedTokens, setLoadedTokens] = useState<BrandingTokens | null>(
+    tokens
+  );
 
   useEffect(() => {
-    getBrandingTokens().then(setTokens);
-  }, []);
-
-  useEffect(() => {
-    if (!tokens) return;
+    if (!loadedTokens) return;
     const root = document.documentElement;
-    root.style.setProperty("--brand-primary", tokens.primary);
-    root.style.setProperty("--brand-secondary", tokens.secondary);
-    root.style.setProperty("--brand-accent", tokens.accent);
-    root.style.setProperty("--brand-background", tokens.background);
-    root.style.setProperty("--brand-text", tokens.text);
-    root.style.setProperty("--brand-heading-font", tokens.headingFont);
-    root.style.setProperty("--brand-body-font", tokens.bodyFont);
-    root.style.setProperty("--brand-radius", tokens.radius);
-    root.style.setProperty("--brand-spacing", tokens.spacing);
-  }, [tokens]);
+    root.style.setProperty("--brand-primary", loadedTokens.primary);
+    root.style.setProperty("--brand-secondary", loadedTokens.secondary);
+    root.style.setProperty("--brand-accent", loadedTokens.accent);
+    root.style.setProperty("--brand-background", loadedTokens.background);
+    root.style.setProperty("--brand-text", loadedTokens.text);
+    root.style.setProperty(
+      "--brand-heading-font",
+      loadedTokens.headingFont
+    );
+    root.style.setProperty("--brand-body-font", loadedTokens.bodyFont);
+    root.style.setProperty("--brand-radius", loadedTokens.radius);
+    root.style.setProperty("--brand-spacing", loadedTokens.spacing);
+  }, [loadedTokens]);
 
   return <>{children}</>;
 }

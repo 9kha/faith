@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { BrandingTokensProvider } from "@/components/branding-tokens";
+import { getBrandingTokens } from "@/lib/settings";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -19,12 +20,18 @@ export const metadata: Metadata = {
   description: "Real estate channel partner platform",
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  const tokens = await getBrandingTokens().catch(() => null);
+
   return (
     <html lang="en" className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col">
         <TooltipProvider>
-          <BrandingTokensProvider>{children}</BrandingTokensProvider>
+          <BrandingTokensProvider tokens={tokens}>{children}</BrandingTokensProvider>
         </TooltipProvider>
       </body>
     </html>
