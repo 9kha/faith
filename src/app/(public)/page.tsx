@@ -3,7 +3,7 @@ import Link from "next/link";
 import { db } from "@/lib/db";
 import { ArrowRight, MapPin, Star, ShieldCheck, Home, Building2, Phone, DollarSign } from "lucide-react";
 
-export const revalidate = 60; // ISR: revalidate every 60 seconds
+export const dynamic = "force-dynamic";
 
 export const metadata = {
   title: "Home - ChannelPartner Pro",
@@ -101,7 +101,6 @@ function HeroSection() {
           </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center max-w-md mx-auto">
             <Button
-              asChild
               className="w-full sm:w-auto px-8 py-3 text-lg bg-white text-gray-900 hover:bg-gray-100"
             >
               <Link href="/buy">
@@ -110,7 +109,6 @@ function HeroSection() {
               </Link>
             </Button>
             <Button
-              asChild
               className="w-full sm:w-auto px-8 py-3 text-lg border border-gray-200 text-gray-700 hover:bg-gray-50"
             >
               <Link href="/rent">
@@ -493,7 +491,7 @@ function CTASection() {
           </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <Button
-              asChild
+              variant="outline"
               className="px-8 py-3 text-lg bg-white text-primary hover:bg-gray-100"
             >
               <Link href="/buy">

@@ -1,9 +1,8 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
@@ -22,15 +21,12 @@ import {
 import {
   Search,
   Filter,
-  MapPin,
   Home,
   Layout,
   ChevronLeft,
   ChevronRight,
   X,
 } from "lucide-react";
-import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
-import "leaflet/dist/leaflet.css";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -57,80 +53,15 @@ type PropertyCardData = {
   imageUrl: string | null;
 };
 
-const EMPTY_PROPERTY: PropertyCardData = {
-  id: "",
-  title: "",
-  slug: "",
-  listingType: "SALE",
-  category: "FLAT",
-  bhk: null,
-  area: null,
-  price: null,
-  rent: null,
-  city: "",
-  locality: "",
-  status: "AVAILABLE",
-  featured: false,
-  imageUrl: null,
-};
-
-type MapMarker = {
-  id: string;
-  lat: number;
-  lng: number;
-  title: string;
-  price: number | null;
-  rent: number | null;
-  listingType: string;
-};
-
-function MapMarkerComponent({ marker }: { marker: MapMarker }) {
-  const [isOpen, setIsOpen] = useState(false);
-  const map = useMap();
-
-  return (
-    <Marker
-      position={[marker.lat as number, marker.lng as number]}
-      onClick={() => setIsOpen(!isOpen)}
-      {...(marker as any)}
-    >
-      {isOpen && (
-        <Popup>
-          <div className="p-2">
-            <h3 className="font-semibold text-gray-900">{marker.title}</h3>
-            <p className="text-sm text-gray-600 mt-1">
-              {marker.listingType === "RENT"
-                ? `₹${(marker.rent || 0) / 100000}/mo`
-                : `₹${(marker.price || 0) / 10000000}Cr`}
-            </p>
-            <button
-              onClick={() => {
-                setIsOpen(false);
-                map.flyTo([marker.lat, marker.lng], 16);
-              }}
-              className="text-xs text-primary underline"
-            >
-              View Details
-            </button>
-          </div>
-        </Popup>
-      )}
-    </Marker>
-  );
-}
-
 export default function ListingsPage({
   listingType = "SALE",
 }: {
   listingType?: string;
 }) {
-  const router = useRouter();
-  const searchParams = useSearchParams();
   const [properties, setProperties] = useState<PropertyCardData[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [mapMarkers, setMapMarkers] = useState<MapMarker[]>([]);
-  const [viewMode, setViewMode] = useState<"grid" | "list" | "map">("grid");
+  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [page, setPage] = useState(1);
   const [filters, setFilters] = useState({
     location: "",
@@ -169,23 +100,9 @@ export default function ListingsPage({
       const data = await res.json();
       setProperties(data.properties || []);
       setTotal(data.total || 0);
-      setMapMarkers(
-        (data.properties || []).filter(
-          (p: any) => p.lat && p.lng
-        ).map((p: any) => ({
-          id: p.id,
-          lat: p.lat,
-          lng: p.lng,
-          title: p.title,
-          price: p.price,
-          rent: p.rent,
-          listingType: p.listingType,
-        }))
-      );
     } catch {
       setProperties([]);
       setTotal(0);
-      setMapMarkers([]);
     } finally {
       setLoading(false);
     }
@@ -345,61 +262,32 @@ export default function ListingsPage({
             >
               <Layout className="mr-1 h-3 w-3" /> List
             </button>
-            <button
-              onClick={() => setViewMode("map")}
-              className={`px-3 py-1.5 text-xs ${
-                viewMode === "map" ? "bg-primary text-primary-foreground" : "text-gray-600 hover:bg-muted"
-              }`}
-            >
-              <MapPin className="mr-1 h-3 w-3" /> Map
-            </button>
           </div>
         </div>
       </div>
 
-      {/* Map View */}
-      {viewMode === "map" && (
-        <div className="h-[600px] w-full rounded-xl border border-gray-200 overflow-hidden">
-          <MapContainer
-            center={[22.7196, 75.8577]}
-            zoom={12}
-            className="h-full"
-          >
-            <TileLayer
-              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-            />
-            {mapMarkers.map((m) => (
-              <MapMarkerComponent key={m.id} marker={m} />
-            ))}
-          </MapContainer>
-        </div>
-      )}
-
       {/* Grid / List View */}
-      {viewMode !== "map" && (
-        <div className={`grid gap-6 ${viewMode === "grid" ? "grid-cols-1 md:grid-cols-2 lg:grid-cols-3" : "grid-cols-1"}`}>
-          {properties.length === 0 ? (
-            <div className="col-span-full flex flex-col items-center justify-center py-16 text-center">
-              <MapPin className="h-12 w-12 text-gray-300 mb-4" />
-              <h3 className="text-lg font-medium text-gray-900">No properties found</h3>
-              <p className="text-gray-500 mt-1">
-                Try adjusting your filters or search for a different location.
-              </p>
-              <Button onClick={() => updateFilters({ location: "", budgetMin: "", budgetMax: "", bhk: "", category: "", status: "", reraOnly: false, keyword: "" })}>
-                Reset Filters
-              </Button>
-            </div>
-          ) : (
-            properties.map((p) => (
-              <PropertyListingCard key={p.id} property={p} listingType={listingType} />
-            ))
-          )}
-        </div>
-      )}
+      <div className={`grid gap-6 ${viewMode === "grid" ? "grid-cols-1 md:grid-cols-2 lg:grid-cols-3" : "grid-cols-1"}`}>
+        {properties.length === 0 ? (
+          <div className="col-span-full flex flex-col items-center justify-center py-16 text-center">
+            <Home className="h-12 w-12 text-gray-300 mb-4" />
+            <h3 className="text-lg font-medium text-gray-900">No properties found</h3>
+            <p className="text-gray-500 mt-1">
+              Try adjusting your filters or search for a different location.
+            </p>
+            <Button onClick={() => updateFilters({ location: "", budgetMin: "", budgetMax: "", bhk: "", category: "", status: "", reraOnly: false, keyword: "" })}>
+              Reset Filters
+            </Button>
+          </div>
+        ) : (
+          properties.map((p) => (
+            <PropertyListingCard key={p.id} property={p} listingType={listingType} />
+          ))
+        )}
+      </div>
 
       {/* Pagination */}
-      {totalPages > 1 && viewMode !== "map" && (
+      {totalPages > 1 && (
         <div className="flex items-center justify-between">
           <Button
             variant="outline"
