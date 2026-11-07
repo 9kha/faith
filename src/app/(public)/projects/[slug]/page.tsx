@@ -2,7 +2,9 @@ import { db } from "@/lib/db";
 import { notFound } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
-import { Phone, MapPin, Calendar, MessageCircle, Print, QrCode } from "lucide-react";
+import { WhatsApp, Phone, MapPin, Calendar, Share2 } from "lucide-react";
+import { InquiryForm } from "@/components/public/inquiry-form";
+import { FloatingCTA } from "@/components/public/floating-cta";
 
 export const revalidate = 60;
 
@@ -40,6 +42,11 @@ export default async function ProjectDetailPage({
     <div className="space-y-0">
       <ProjectHeroGallery project={project} />
       <ProjectQuickFacts project={project} pricePerSqFt={pricePerSqFt} />
+      <InquiryForm
+        projectId={project.id}
+        projectName={project.name}
+        prefillMessage={`Interested in ${project.name}`}
+      />
       <ProjectOverview project={project} />
       <ProjectConfigurations project={project} />
       <ProjectAmenities project={project} />
@@ -49,6 +56,10 @@ export default async function ProjectDetailPage({
       <ProjectFaqs project={project} />
       <ProjectSimilar project={project} />
       <MobileStickyBar project={project} />
+      <FloatingCTA
+        propertyTitle={project.name}
+        projectName={project.name}
+      />
     </div>
   );
 }

@@ -3,6 +3,8 @@ import { notFound } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import { MessageCircle, Phone, MapPin, Calendar, Home } from "lucide-react";
+import { InquiryForm } from "@/components/public/inquiry-form";
+import { FloatingCTA } from "@/components/public/floating-cta";
 
 export const revalidate = 60;
 
@@ -35,10 +37,18 @@ export default async function PropertyDetailPage({
     <div className="space-y-0">
       <PropertyHeroGallery property={property} />
       <PropertyQuickFacts property={property} priceDisplay={priceDisplay} />
+      <InquiryForm
+        propertyId={property.id}
+        propertyTitle={property.title}
+        prefillMessage={`Interested in ${property.title}`}
+      />
       <PropertyOverview property={property} />
       <PropertyLocation property={property} />
       <PropertyBuilderCard property={property} />
       <MobileStickyBar property={property} />
+      <FloatingCTA
+        propertyTitle={property.title}
+      />
     </div>
   );
 }
