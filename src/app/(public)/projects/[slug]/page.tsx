@@ -2,7 +2,7 @@ import { db } from "@/lib/db";
 import { notFound } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
-import { WhatsApp, Phone, MapPin, Calendar, Share2 } from "lucide-react";
+import { Building2, Home, Phone, MapPin, Calendar, MessageCircle, Share2 } from "lucide-react";
 import { InquiryForm } from "@/components/public/inquiry-form";
 import { FloatingCTA } from "@/components/public/floating-cta";
 
@@ -152,7 +152,7 @@ function ProjectQuickFacts({
             </a>
           </Button>
           <Button asChild variant="outline" className="flex-1">
-            <Link href={`/projects/${slug}`}>Share</Link>
+            <Link href={`/projects/${project.slug}`}>Share</Link>
           </Button>
         </div>
       </div>
@@ -429,7 +429,7 @@ function ProjectFaqs({ project }: { project: any }) {
           FAQs
         </h2>
         <div className="space-y-3">
-          {faqs.map((faq: any, i) => (
+          {faqs.map((faq: any, i: number) => (
             <div key={i} className="border border-gray-200 rounded-lg overflow-hidden">
               <button className="w-full flex items-center justify-between px-4 py-3 text-left bg-white hover:bg-gray-50 transition-colors">
                 <span className="text-sm font-medium text-gray-900">{faq.question}</span>

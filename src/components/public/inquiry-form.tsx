@@ -126,9 +126,9 @@ export function InquiryForm({
           <input
             type="text"
             name="website"
-            tabIndex={-1}
-            autocomplete="off"
+            autoComplete="off"
             style={{ position: "absolute", left: "-9999px", visibility: "hidden" }}
+            tabIndex={-1}
           />
 
           <div className="grid gap-4 md:grid-cols-2">

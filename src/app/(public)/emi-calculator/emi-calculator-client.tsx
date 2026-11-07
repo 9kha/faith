@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Calculator } from "lucide-react";
-import { Card } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 
 export function EmiCalculatorClient() {

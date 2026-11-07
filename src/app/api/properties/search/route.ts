@@ -70,7 +70,7 @@ export async function GET(req: Request) {
           ...(bhk ? { bhk } : {}),
           ...(category ? { category: category as PropertyCategory } : {}),
           ...(status ? { status: status as PropertyStatus } : {}),
-          ...(builder ? { builder } : {}),
+          ...(builder ? { builderId: builder } : {}),
           ...(reraOnly ? { reraNo: { not: null } } : {}),
           ...(keyword
             ? {

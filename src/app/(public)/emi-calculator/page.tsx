@@ -1,4 +1,4 @@
-import { Calculator, Home, RupeeSign } from "lucide-react";
+import { Calculator, Home } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";

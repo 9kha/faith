@@ -21,7 +21,7 @@ export default async function BuilderDetailPage({
     where: { slug, deletedAt: null },
     include: {
       projects: {
-        where: { deletedAt: null, status: { not: "ARCHIVED" } },
+        where: { deletedAt: null, status: { not: "ARCHIVED" as any } },
         orderBy: [{ featured: "desc" }, { sortOrder: "asc" }],
       },
     },

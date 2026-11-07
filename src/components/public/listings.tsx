@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { Router, useRouter, useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
@@ -89,7 +89,11 @@ function MapMarkerComponent({ marker }: { marker: MapMarker }) {
   const map = useMap();
 
   return (
-    <Marker position={[marker.lat, marker.lng]} onClick={() => setIsOpen(!isOpen)}>
+    <Marker
+      position={[marker.lat as number, marker.lng as number]}
+      onClick={() => setIsOpen(!isOpen)}
+      {...(marker as any)}
+    >
       {isOpen && (
         <Popup>
           <div className="p-2">

@@ -69,7 +69,7 @@ function BlogCard({ post }: { post: any }) {
           />
         ) : (
           <div className="h-full w-full bg-gray-100 flex items-center justify-center">
-            <Home className="h-12 w-12 text-gray-300" />
+            <Home />
           </div>
         )}
         <div className="absolute top-2 right-2 bg-white/90 backdrop-blur px-2 py-1 rounded text-xs font-medium text-gray-700">

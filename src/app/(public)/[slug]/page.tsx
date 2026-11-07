@@ -16,9 +16,6 @@ export default async function DynamicPage({
   const { slug } = await params;
   const page = await db.page.findUnique({
     where: { slug, deletedAt: null, status: "PUBLISHED" },
-    include: {
-      seoMeta: true,
-    },
   });
 
   if (!page) notFound();
@@ -28,10 +25,10 @@ export default async function DynamicPage({
       <section className="relative bg-gray-50 py-12 lg:py-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <h1 className="text-4xl md:text-6xl font-serif font-bold text-gray-900 mb-6">
-            {page.seoMeta?.title || page.title}
+            {page.seoTitle || page.title}
           </h1>
           <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-            {page.seoMeta?.description || "Welcome to our custom page."}
+            {page.seoDescription || "Welcome to our custom page."}
           </p>
         </div>
       </section>
