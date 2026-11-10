@@ -3,41 +3,41 @@ import { InquiryForm } from "@/components/public/inquiry-form";
 import { Building2, Users, Phone, Mail, ShieldCheck } from "lucide-react";
 
 export const metadata = {
-  title: "Partner Program - ChannelPartner Pro",
-  description: "Join our channel partner program and earn commissions on property referrals.",
+  title: "Associate Partner Program — Faith Venture Realty",
+  description: "Join our real estate associate partner network and earn attractive commissions on property referrals.",
 };
 
 export default function PartnerProgramPage() {
   return (
     <div className="space-y-0">
-      <section className="relative bg-[linear-gradient(135deg,#0f172a_0%,#1e293b_100%)] py-16 lg:py-24 overflow-hidden">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 text-center">
-          <h1 className="text-4xl md:text-6xl font-serif font-bold text-white mb-6">Channel Partner Program</h1>
-          <p className="text-lg text-gray-300 max-w-2xl mx-auto">
-            Join our network of channel partners and earn attractive commissions
+      <section className="relative bg-background border-b border-border py-16 lg:py-24 overflow-hidden transition-colors">
+        <div className="max-w-[1720px] mx-auto px-4 sm:px-6 lg:px-8 relative z-10 text-center">
+          <h1 className="text-4xl md:text-6xl font-serif font-bold text-foreground mb-6">Associate Partner Program</h1>
+          <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+            Join our network of associate partners and earn attractive commissions
             on every successful property referral.
           </p>
         </div>
       </section>
 
-      <section className="py-16 lg:py-24 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <section className="py-16 lg:py-24 bg-card transition-colors">
+        <div className="max-w-[1720px] mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-12">
-            <div className="p-6 rounded-xl border border-gray-200 bg-white">
+            <div className="p-6 rounded-xl border border-border bg-background">
               <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center text-primary mb-4">
                 <Building2 className="h-6 w-6" />
               </div>
-              <h3 className="font-semibold text-gray-900 mb-2">Attractive Commissions</h3>
-              <p className="text-sm text-gray-600">
+              <h3 className="font-semibold text-foreground mb-2">Attractive Commissions</h3>
+              <p className="text-sm text-muted-foreground">
                 Earn up to 3% commission on every successful property booking
                 through your referral.
               </p>
             </div>
-            <div className="p-6 rounded-xl border border-gray-200 bg-white">
+            <div className="p-6 rounded-xl border border-border bg-background">
               <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center text-primary mb-4">
                 <Users className="h-6 w-6" />
               </div>
-              <h3 className="font-semibold text-gray-900 mb-2">Dedicated Support</h3>
+              <h3 className="font-semibold text-foreground mb-2">Dedicated Support</h3>
               <p className="text-sm text-gray-600">
                 Get dedicated partner support, marketing materials, and training
                 to help you close more deals.
@@ -62,7 +62,7 @@ export default function PartnerProgramPage() {
                   Become a Partner
                 </h2>
                 <p className="text-gray-600 mb-6">
-                  Whether you're an individual agent, a small brokerage, or a
+                  Whether you&apos;re an individual agent, a small brokerage, or a
                   large network, our partner program is designed to help you
                   grow your business.
                 </p>

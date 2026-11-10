@@ -1,89 +1,37 @@
 import { NextResponse } from "next/server";
-import { db } from "@/lib/db";
-import type {
-  PropertyListingType,
-  PropertyCategory,
-  PropertyStatus,
-} from "@prisma/client";
+import { getProperties } from "@/modules/property/service";
 
 export const runtime = "nodejs";
+
+const DEFAULT_LIMIT = 12;
+const MAX_LIMIT = 60;
 
 export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
-    const listingType = searchParams.get("listingType") || "SALE";
-    const page = parseInt(searchParams.get("page") || "1", 10);
-    const limit = parseInt(searchParams.get("limit") || "12", 10);
-    const skip = (page - 1) * limit;
+    const listingType = searchParams.get("listingType") || undefined;
+    const page = Math.max(1, parseInt(searchParams.get("page") || "1", 10) || 1);
+    const limit = clampInt(searchParams.get("limit"), DEFAULT_LIMIT, 1, MAX_LIMIT);
 
-    const city = searchParams.get("city") || undefined;
-    const priceMin = searchParams.get("priceMin")
-      ? parseInt(searchParams.get("priceMin")!, 10)
-      : undefined;
-    const priceMax = searchParams.get("priceMax")
-      ? parseInt(searchParams.get("priceMax")!, 10)
-      : undefined;
-    const bhk = searchParams.get("bhk") || undefined;
-    const category = searchParams.get("category") || undefined;
-    const status = searchParams.get("status") || undefined;
-    const builder = searchParams.get("builder") || undefined;
-    const reraOnly = searchParams.get("reraOnly") === "true";
     const keyword = searchParams.get("keyword") || undefined;
-
-    const [properties, total] = await Promise.all([
-      db.property.findMany({
-        where: {
-          deletedAt: null,
-          listingType: listingType as PropertyListingType,
-          ...(city ? { city } : {}),
-          ...(priceMin !== undefined ? { price: { gte: priceMin } } : {}),
-          ...(priceMax !== undefined ? { price: { lte: priceMax } } : {}),
-          ...(bhk ? { bhk } : {}),
-          ...(category ? { category: category as PropertyCategory } : {}),
-          ...(status ? { status: status as PropertyStatus } : {}),
-          ...(reraOnly ? { reraNo: { not: null } } : {}),
-          ...(keyword
-            ? {
-                OR: [
-                  { title: { contains: keyword } },
-                  { city: { contains: keyword } },
-                  { locality: { contains: keyword } },
-                  { description: { contains: keyword } },
-                ],
-              }
-            : {}),
-        },
-        include: {
-          builder: { select: { name: true, slug: true } },
-        },
-        orderBy: [{ featured: "desc" }, { createdAt: "desc" }],
-        take: limit,
-        skip,
-      }),
-      db.property.count({
-        where: {
-          deletedAt: null,
-          listingType: listingType as PropertyListingType,
-          ...(city ? { city } : {}),
-          ...(priceMin !== undefined ? { price: { gte: priceMin } } : {}),
-          ...(priceMax !== undefined ? { price: { lte: priceMax } } : {}),
-          ...(bhk ? { bhk } : {}),
-          ...(category ? { category: category as PropertyCategory } : {}),
-          ...(status ? { status: status as PropertyStatus } : {}),
-          ...(builder ? { builderId: builder } : {}),
-          ...(keyword
-            ? {
-                OR: [
-                  { title: { contains: keyword } },
-                  { city: { contains: keyword } },
-                  { locality: { contains: keyword } },
-                  { description: { contains: keyword } },
-                ],
-              }
-            : {}),
-        },
-      }),
-    ]);
+    const location = searchParams.get("location") || searchParams.get("city") || undefined;
+    const { properties, total } = await getProperties({
+      search: keyword,
+      location,
+      listingType,
+      city: searchParams.get("city") || undefined,
+      locality: searchParams.get("locality") || undefined,
+      bhk: searchParams.get("bhk") || undefined,
+      category: searchParams.get("category") || undefined,
+      status: searchParams.get("status") || undefined,
+      builderId: searchParams.get("builder") || undefined,
+      verified: searchParams.get("reraOnly") === "true" ? true : undefined,
+      priceMin: intOrNull(searchParams.get("priceMin")),
+      priceMax: intOrNull(searchParams.get("priceMax")),
+      sort: searchParams.get("sort") || undefined,
+      limit,
+      offset: (page - 1) * limit,
+    });
 
     return NextResponse.json({
       properties: properties.map((p) => ({
@@ -100,11 +48,16 @@ export async function GET(req: Request) {
         locality: p.locality,
         status: p.status,
         featured: p.featured,
-        imageUrl: null, // Will be populated from media in future
+        verified: p.verified,
+        imageUrl: p.imageUrl ?? null,
+        builder: p.builder ?? null,
         lat: p.lat,
         lng: p.lng,
       })),
       total,
+      page,
+      limit,
+      totalPages: Math.max(1, Math.ceil(total / limit)),
     });
   } catch (error) {
     console.error("Search error:", error);
@@ -113,4 +66,16 @@ export async function GET(req: Request) {
       { status: 500 }
     );
   }
+}
+
+function clampInt(raw: string | null, fallback: number, min: number, max: number) {
+  const n = parseInt(raw || "", 10);
+  if (Number.isNaN(n)) return fallback;
+  return Math.min(max, Math.max(min, n));
+}
+
+function intOrNull(raw: string | null): number | undefined {
+  if (!raw) return undefined;
+  const n = parseInt(raw, 10);
+  return Number.isNaN(n) ? undefined : n;
 }

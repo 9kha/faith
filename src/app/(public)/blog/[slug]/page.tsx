@@ -6,7 +6,7 @@ import Link from "next/link";
 export const revalidate = 60;
 
 export const metadata = {
-  title: "Blog Post - ChannelPartner Pro",
+  title: "Blog Post — Faith Venture Realty",
   description: "Read the latest blog post.",
 };
 
@@ -21,6 +21,7 @@ export default async function BlogDetailPage({
     include: {
       author: { select: { name: true } },
       category: { select: { name: true, slug: true } },
+      featuredImage: { select: { url: true, alt: true } },
     },
   });
 
@@ -31,9 +32,9 @@ export default async function BlogDetailPage({
       <section className="relative bg-gray-50 py-16 lg:py-24">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
           <div className="absolute inset-0 bg-[linear-gradient(135deg,#0f172a_0%,#1e293b_100%)] -z-10" />
-          {post.featuredImageId ? (
+          {post.featuredImage?.url ? (
             <Image
-              src={`/uploads/${post.featuredImageId}`}
+              src={post.featuredImage?.url || "/images/blog-1.jpg"}
               alt={post.title}
               fill
               className="object-cover opacity-60"
@@ -61,9 +62,9 @@ export default async function BlogDetailPage({
         </div>
       </section>
 
-      <section className="py-16 lg:py-24 bg-white">
+      <section className="py-16 lg:py-24 bg-card transition-colors">
         <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="prose prose-lg text-gray-700 leading-relaxed">
+          <div className="prose prose-lg dark:prose-invert text-foreground leading-relaxed">
             <div dangerouslySetInnerHTML={{ __html: post.content || "" }} />
           </div>
         </div>

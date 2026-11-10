@@ -18,9 +18,10 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Search, Plus, Building2 } from "lucide-react";
+import { Search, Plus, Building2, Trash2, Loader2 } from "lucide-react";
+import { Pagination } from "@/components/ui/pagination";
 import Link from "next/link";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 
 type ProjectRow = {
   id: string;
@@ -44,38 +45,55 @@ export default function ProjectsPage() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [builderFilter, setBuilderFilter] = useState("");
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  const loadProjects = useCallback(async () => {
+    setLoading(true);
+    try {
+      const params = new URLSearchParams({
+        search,
+        status: statusFilter,
+        builderId: builderFilter,
+        page: String(page),
+        limit: "10",
+      });
+      const res = await fetch(`/api/projects?${params}`);
+      const data = await res.json();
+      setProjects(data.projects || []);
+      setTotal(data.total || 0);
+      setTotalPages(data.totalPages || 1);
+    } catch {
+      setProjects([]);
+      setTotal(0);
+      setTotalPages(1);
+    } finally {
+      setLoading(false);
+    }
+  }, [search, statusFilter, builderFilter, page]);
 
   useEffect(() => {
-    let mounted = true;
+    const timer = setTimeout(() => {
+      void loadProjects();
+    }, search ? 300 : 0);
 
-    (async () => {
-      try {
-        const params = new URLSearchParams({
-          search,
-          status: statusFilter,
-          builderId: builderFilter,
-          limit: "100",
-        });
-        const res = await fetch(`/api/projects?${params}`);
-        const data = await res.json();
-        if (mounted) {
-          setProjects(data.projects || []);
-          setTotal(data.total || 0);
-        }
-      } catch {
-        if (mounted) {
-          setProjects([]);
-          setTotal(0);
-        }
-      } finally {
-        if (mounted) setLoading(false);
-      }
-    })();
+    return () => clearTimeout(timer);
+  }, [loadProjects, search]);
 
-    return () => {
-      mounted = false;
-    };
-  }, [search, statusFilter, builderFilter]);
+  const handleDelete = async (id: string) => {
+    if (!confirm("Are you sure you want to delete this project?")) return;
+    setDeletingId(id);
+    try {
+      const res = await fetch(`/api/projects/${id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("Delete failed");
+      await loadProjects();
+    } catch {
+      alert("Failed to delete project");
+    } finally {
+      setDeletingId(null);
+    }
+  };
 
   if (loading) {
     return (
@@ -94,7 +112,7 @@ export default function ProjectsPage() {
             Manage real estate projects and their inventory
           </p>
         </div>
-        <Link href="/admin/admin/projects/new">
+        <Link href="/admin/projects/new">
           <Button>
             <Plus className="mr-2 h-4 w-4" />
             Add Project
@@ -108,13 +126,19 @@ export default function ProjectsPage() {
           <Input
             placeholder="Search projects..."
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setPage(1);
+            }}
             className="pl-9"
           />
         </div>
         <select
           value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
+          onChange={(e) => {
+            setStatusFilter(e.target.value);
+            setPage(1);
+          }}
           className="border border-input bg-background px-3 py-2 rounded-md text-sm"
         >
           <option value="">All Status</option>
@@ -150,7 +174,7 @@ export default function ProjectsPage() {
                 {projects.map((p) => (
                   <TableRow key={p.id}>
                     <TableCell>
-                      <Link href={`/admin/admin/projects/${p.id}`} className="font-medium hover:underline">
+                      <Link href={`/admin/projects/new?edit=${p.id}`} className="font-medium hover:underline">
                         {p.name}
                       </Link>
                     </TableCell>
@@ -177,12 +201,27 @@ export default function ProjectsPage() {
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right">
-                      <Link
-                        href={`/admin/admin/projects/${p.id}/edit`}
-                        className="text-sm text-primary hover:underline mr-2"
-                      >
-                        Edit
-                      </Link>
+                      <div className="flex items-center justify-end gap-2">
+                        <Link
+                          href={`/admin/projects/new?edit=${p.id}`}
+                          className="text-sm text-primary hover:underline"
+                        >
+                          Edit
+                        </Link>
+                        <Button
+                          variant="destructive"
+                          size="icon-sm"
+                          disabled={deletingId === p.id}
+                          onClick={() => void handleDelete(p.id)}
+                          aria-label="Delete project"
+                        >
+                          {deletingId === p.id ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Trash2 className="h-4 w-4" />
+                          )}
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -198,6 +237,14 @@ export default function ProjectsPage() {
           </div>
         </CardContent>
       </Card>
+
+      <Pagination
+        page={page}
+        totalPages={totalPages}
+        total={total}
+        label="projects"
+        onChange={setPage}
+      />
     </div>
   );
 }

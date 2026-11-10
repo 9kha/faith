@@ -5,8 +5,8 @@ import Image from "next/image";
 export const revalidate = 60;
 
 export const metadata = {
-  title: "Blog - ChannelPartner Pro",
-  description: "Latest real estate news, tips, and insights from ChannelPartner Pro.",
+  title: "Blog — Faith Venture Realty",
+  description: "Latest real estate news, tips, and insights from Faith Venture Realty.",
 };
 
 export default async function BlogPage() {
@@ -17,6 +17,7 @@ export default async function BlogPage() {
     include: {
       author: { select: { name: true } },
       category: { select: { name: true, slug: true } },
+      featuredImage: { select: { url: true, alt: true } },
     },
   });
 
@@ -51,16 +52,27 @@ export default async function BlogPage() {
   );
 }
 
-function BlogCard({ post }: { post: any }) {
+type BlogCardPost = {
+  slug: string;
+  title: string;
+  excerpt: string | null;
+  publishedAt: Date | string | null;
+  createdAt: Date | string;
+  featuredImage?: { url: string } | null;
+  category?: { name: string } | null;
+  author?: { name: string } | null;
+};
+
+function BlogCard({ post }: { post: BlogCardPost }) {
   return (
     <Link
       href={`/blog/${post.slug}`}
       className="block rounded-xl border border-gray-200 bg-white overflow-hidden hover:shadow-xl transition-all duration-300"
     >
       <div className="relative h-48 overflow-hidden">
-        {post.featuredImageId ? (
+        {post.featuredImage?.url ? (
           <Image
-            src={`/uploads/${post.featuredImageId}`}
+            src={post.featuredImage?.url || "/images/blog-1.jpg"}
             alt={post.title}
             fill
             className="object-cover group-hover:scale-105 transition-transform duration-500"

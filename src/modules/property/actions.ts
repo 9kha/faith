@@ -44,7 +44,7 @@ export async function createPropertyAction(formData: FormData) {
 
   try {
     const property = await createProperty(data, userId, ip);
-    revalidatePath("/admin/admin/properties");
+    revalidatePath("/admin/properties");
     return { success: true, property };
   } catch (e) {
     return { error: e instanceof Error ? e.message : "Failed to create property" };
@@ -76,7 +76,7 @@ export async function updatePropertyAction(id: string, formData: FormData) {
 
   try {
     const property = await updateProperty(id, data, userId, ip);
-    revalidatePath("/admin/admin/properties");
+    revalidatePath("/admin/properties");
     return { success: true, property };
   } catch (e) {
     return { error: e instanceof Error ? e.message : "Failed to update property" };
@@ -96,7 +96,7 @@ export async function deletePropertyAction(id: string) {
 
   try {
     await deleteProperty(id, userId, ip);
-    revalidatePath("/admin/admin/properties");
+    revalidatePath("/admin/properties");
     return { success: true };
   } catch (e) {
     return { error: e instanceof Error ? e.message : "Failed to delete property" };

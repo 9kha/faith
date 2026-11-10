@@ -29,6 +29,20 @@ export async function createBuilderAction(formData: FormData) {
   await requirePermission(userId, "builders", "create");
 
   const raw = Object.fromEntries(formData.entries());
+  if (raw.videos && typeof raw.videos === "string") {
+    try {
+      (raw as any).videos = JSON.parse(raw.videos as string);
+    } catch {
+      // ignore
+    }
+  }
+  if (raw.bannerConfig && typeof raw.bannerConfig === "string") {
+    try {
+      (raw as any).bannerConfig = JSON.parse(raw.bannerConfig as string);
+    } catch {
+      // ignore
+    }
+  }
   const parsed = builderSchema.safeParse(raw);
 
   if (!parsed.success) {
@@ -44,7 +58,10 @@ export async function createBuilderAction(formData: FormData) {
 
   try {
     const builder = await createBuilder(data as Record<string, unknown>, userId, ip);
-    revalidatePath("/admin/admin/builders");
+    revalidatePath("/admin/builders");
+    revalidatePath(`/builders/${data.slug}`);
+    revalidatePath("/builders");
+    revalidatePath("/");
     return { success: true, builder };
   } catch (e) {
     return { error: e instanceof Error ? e.message : "Failed to create builder" };
@@ -61,6 +78,20 @@ export async function updateBuilderAction(id: string, formData: FormData) {
   await requirePermission(userId, "builders", "edit");
 
   const raw = Object.fromEntries(formData.entries());
+  if (raw.videos && typeof raw.videos === "string") {
+    try {
+      (raw as any).videos = JSON.parse(raw.videos as string);
+    } catch {
+      // ignore
+    }
+  }
+  if (raw.bannerConfig && typeof raw.bannerConfig === "string") {
+    try {
+      (raw as any).bannerConfig = JSON.parse(raw.bannerConfig as string);
+    } catch {
+      // ignore
+    }
+  }
   const parsed = builderSchema.safeParse(raw);
 
   if (!parsed.success) {
@@ -76,7 +107,10 @@ export async function updateBuilderAction(id: string, formData: FormData) {
 
   try {
     const builder = await updateBuilder(id, data as Record<string, unknown>, userId, ip);
-    revalidatePath("/admin/admin/builders");
+    revalidatePath("/admin/builders");
+    revalidatePath(`/builders/${data.slug}`);
+    revalidatePath("/builders");
+    revalidatePath("/");
     return { success: true, builder };
   } catch (e) {
     return { error: e instanceof Error ? e.message : "Failed to update builder" };
@@ -96,7 +130,7 @@ export async function deleteBuilderAction(id: string) {
 
   try {
     await deleteBuilder(id, userId, ip);
-    revalidatePath("/admin/admin/builders");
+    revalidatePath("/admin/builders");
     return { success: true };
   } catch (e) {
     return { error: e instanceof Error ? e.message : "Failed to delete builder" };

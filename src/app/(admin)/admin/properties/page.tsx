@@ -18,9 +18,10 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Search, Plus } from "lucide-react";
+import { Search, Plus, Trash2, Loader2 } from "lucide-react";
+import { Pagination } from "@/components/ui/pagination";
 import Link from "next/link";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 
 type PropertyRow = {
   id: string;
@@ -44,37 +45,54 @@ export default function PropertiesPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [listingTypeFilter, setListingTypeFilter] = useState("");
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  const loadProperties = useCallback(async () => {
+    setLoading(true);
+    try {
+      const params = new URLSearchParams({
+        search,
+        listingType: listingTypeFilter,
+        page: String(page),
+        limit: "10",
+      });
+      const res = await fetch(`/api/properties?${params}`);
+      const data = await res.json();
+      setProperties(data.properties || []);
+      setTotal(data.total || 0);
+      setTotalPages(data.totalPages || 1);
+    } catch {
+      setProperties([]);
+      setTotal(0);
+      setTotalPages(1);
+    } finally {
+      setLoading(false);
+    }
+  }, [search, listingTypeFilter, page]);
 
   useEffect(() => {
-    let mounted = true;
+    const timer = setTimeout(() => {
+      void loadProperties();
+    }, search ? 300 : 0);
 
-    (async () => {
-      try {
-        const params = new URLSearchParams({
-          search,
-          listingType: listingTypeFilter,
-          limit: "100",
-        });
-        const res = await fetch(`/api/properties?${params}`);
-        const data = await res.json();
-        if (mounted) {
-          setProperties(data.properties || []);
-          setTotal(data.total || 0);
-        }
-      } catch {
-        if (mounted) {
-          setProperties([]);
-          setTotal(0);
-        }
-      } finally {
-        if (mounted) setLoading(false);
-      }
-    })();
+    return () => clearTimeout(timer);
+  }, [loadProperties, search]);
 
-    return () => {
-      mounted = false;
-    };
-  }, [search, listingTypeFilter]);
+  const handleDelete = async (id: string) => {
+    if (!confirm("Are you sure you want to delete this property?")) return;
+    setDeletingId(id);
+    try {
+      const res = await fetch(`/api/properties/${id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("Delete failed");
+      await loadProperties();
+    } catch {
+      alert("Failed to delete property");
+    } finally {
+      setDeletingId(null);
+    }
+  };
 
   if (loading) {
     return (
@@ -93,7 +111,7 @@ export default function PropertiesPage() {
             Manage individual properties for sale and rent
           </p>
         </div>
-        <Link href="/admin/admin/properties/new">
+        <Link href="/admin/properties/new">
           <Button>
             <Plus className="mr-2 h-4 w-4" />
             Add Property
@@ -107,13 +125,19 @@ export default function PropertiesPage() {
           <Input
             placeholder="Search properties..."
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setPage(1);
+            }}
             className="pl-9"
           />
         </div>
         <select
           value={listingTypeFilter}
-          onChange={(e) => setListingTypeFilter(e.target.value)}
+          onChange={(e) => {
+            setListingTypeFilter(e.target.value);
+            setPage(1);
+          }}
           className="border border-input bg-background px-3 py-2 rounded-md text-sm"
         >
           <option value="">All Types</option>
@@ -147,7 +171,7 @@ export default function PropertiesPage() {
                 {properties.map((p) => (
                   <TableRow key={p.id}>
                     <TableCell>
-                      <Link href={`/admin/admin/properties/${p.id}`} className="font-medium hover:underline">
+                      <Link href={`/admin/properties/new?edit=${p.id}`} className="font-medium hover:underline">
                         {p.title}
                       </Link>
                     </TableCell>
@@ -172,12 +196,27 @@ export default function PropertiesPage() {
                       <Badge variant="default">{p.status}</Badge>
                     </TableCell>
                     <TableCell className="text-right">
-                      <Link
-                        href={`/admin/admin/properties/${p.id}/edit`}
-                        className="text-sm text-primary hover:underline mr-2"
-                      >
-                        Edit
-                      </Link>
+                      <div className="flex items-center justify-end gap-2">
+                        <Link
+                          href={`/admin/properties/new?edit=${p.id}`}
+                          className="text-sm text-primary hover:underline"
+                        >
+                          Edit
+                        </Link>
+                        <Button
+                          variant="destructive"
+                          size="icon-sm"
+                          disabled={deletingId === p.id}
+                          onClick={() => void handleDelete(p.id)}
+                          aria-label="Delete property"
+                        >
+                          {deletingId === p.id ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Trash2 className="h-4 w-4" />
+                          )}
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -193,6 +232,14 @@ export default function PropertiesPage() {
           </div>
         </CardContent>
       </Card>
+
+      <Pagination
+        page={page}
+        totalPages={totalPages}
+        total={total}
+        label="properties"
+        onChange={setPage}
+      />
     </div>
   );
 }

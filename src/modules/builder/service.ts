@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
 import { logActivity } from "@/lib/activity-log";
+import { getPrimaryImages } from "@/lib/media";
 import type { Builder } from "@prisma/client";
 
 export async function getBuilders(params?: {
@@ -24,6 +25,7 @@ export async function getBuilders(params?: {
         ...(featured !== undefined ? { featured } : {}),
       },
       include: {
+        logo: { select: { url: true } },
         _count: {
           select: { projects: true },
         },
@@ -46,7 +48,18 @@ export async function getBuilders(params?: {
     }),
   ]);
 
-  return { builders, total };
+  const images = await getPrimaryImages(
+    "Builder",
+    builders.map((b) => b.id)
+  );
+
+  return {
+    builders: builders.map((b) => ({
+      ...b,
+      logoUrl: b.logo?.url ?? images.get(b.id) ?? null,
+    })),
+    total,
+  };
 }
 
 export async function getBuilderById(id: string) {
@@ -95,6 +108,8 @@ export async function createBuilder(
       status: (data.status as string) || "active",
       featured: Boolean(data.featured),
       sortOrder: Number(data.sortOrder) || 0,
+      videos: data.videos !== undefined ? (data.videos as any) : null,
+      bannerConfig: data.bannerConfig !== undefined ? (data.bannerConfig as any) : null,
       seoTitle: (data.seoTitle as string | undefined) || null,
       seoDescription: (data.seoDescription as string | undefined) || null,
     },
@@ -138,6 +153,8 @@ export async function updateBuilder(
       status: (data.status as string),
       featured: Boolean(data.featured),
       sortOrder: Number(data.sortOrder) || 0,
+      videos: data.videos !== undefined ? (data.videos as any) : undefined,
+      bannerConfig: data.bannerConfig !== undefined ? (data.bannerConfig as any) : undefined,
       seoTitle: (data.seoTitle as string | undefined) || null,
       seoDescription: (data.seoDescription as string | undefined) || null,
     },

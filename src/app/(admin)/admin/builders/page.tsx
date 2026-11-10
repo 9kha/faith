@@ -18,9 +18,10 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Search, Plus, Building2 } from "lucide-react";
+import { Search, Plus, Building2, Trash2, Loader2 } from "lucide-react";
+import { Pagination } from "@/components/ui/pagination";
 import Link from "next/link";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 
 type BuilderRow = {
   id: string;
@@ -30,6 +31,7 @@ type BuilderRow = {
   contactName: string | null;
   contactPhone: string | null;
   logoId: string | null;
+  logoUrl: string | null;
   _count?: { projects: number };
   status: string;
 };
@@ -40,34 +42,54 @@ export default function BuildersPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  const loadBuilders = useCallback(async () => {
+    setLoading(true);
+    try {
+      const params = new URLSearchParams({
+        search,
+        status: statusFilter,
+        page: String(page),
+        limit: "10",
+      });
+      const res = await fetch(`/api/builders?${params}`);
+      const data = await res.json();
+      setBuilders(data.builders || []);
+      setTotal(data.total || 0);
+      setTotalPages(data.totalPages || 1);
+    } catch {
+      setBuilders([]);
+      setTotal(0);
+      setTotalPages(1);
+    } finally {
+      setLoading(false);
+    }
+  }, [search, statusFilter, page]);
 
   useEffect(() => {
-    let mounted = true;
+    const timer = setTimeout(() => {
+      void loadBuilders();
+    }, search ? 300 : 0);
 
-    (async () => {
-      try {
-        const res = await fetch(
-          `/api/builders?search=${encodeURIComponent(search)}&status=${encodeURIComponent(statusFilter)}`
-        );
-        const data = await res.json();
-        if (mounted) {
-          setBuilders(data.builders || []);
-          setTotal(data.total || 0);
-        }
-      } catch {
-        if (mounted) {
-          setBuilders([]);
-          setTotal(0);
-        }
-      } finally {
-        if (mounted) setLoading(false);
-      }
-    })();
+    return () => clearTimeout(timer);
+  }, [loadBuilders, search]);
 
-    return () => {
-      mounted = false;
-    };
-  }, [search, statusFilter]);
+  const handleDelete = async (id: string) => {
+    if (!confirm("Are you sure you want to delete this builder?")) return;
+    setDeletingId(id);
+    try {
+      const res = await fetch(`/api/builders/${id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("Delete failed");
+      await loadBuilders();
+    } catch {
+      alert("Failed to delete builder");
+    } finally {
+      setDeletingId(null);
+    }
+  };
 
   if (loading) {
     return (
@@ -86,7 +108,7 @@ export default function BuildersPage() {
             Manage builder profiles and their projects
           </p>
         </div>
-        <Link href="/admin/admin/builders/new">
+        <Link href="/admin/builders/new">
           <Button>
             <Plus className="mr-2 h-4 w-4" />
             Add Builder
@@ -100,13 +122,19 @@ export default function BuildersPage() {
           <Input
             placeholder="Search builders..."
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setPage(1);
+            }}
             className="pl-9"
           />
         </div>
         <select
           value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
+          onChange={(e) => {
+            setStatusFilter(e.target.value);
+            setPage(1);
+          }}
           className="border border-input bg-background px-3 py-2 rounded-md text-sm"
         >
           <option value="">All Status</option>
@@ -139,9 +167,10 @@ export default function BuildersPage() {
                 {builders.map((b) => (
                   <TableRow key={b.id}>
                     <TableCell className="w-10">
-                      {b.logoId ? (
+                      {b.logoUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
                         <img
-                          src={`/uploads/${b.logoId}`}
+                          src={b.logoUrl}
                           alt={b.name}
                           className="h-8 w-8 rounded-full object-cover border"
                         />
@@ -152,7 +181,7 @@ export default function BuildersPage() {
                       )}
                     </TableCell>
                     <TableCell>
-                      <Link href={`/admin/admin/builders/${b.id}`} className="font-medium hover:underline">
+                      <Link href={`/admin/builders/new?edit=${b.id}`} className="font-medium hover:underline">
                         {b.name}
                       </Link>
                     </TableCell>
@@ -176,12 +205,27 @@ export default function BuildersPage() {
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right">
-                      <Link
-                        href={`/admin/admin/builders/${b.id}/edit`}
-                        className="text-sm text-primary hover:underline mr-2"
-                      >
-                        Edit
-                      </Link>
+                      <div className="flex items-center justify-end gap-2">
+                        <Link
+                          href={`/admin/builders/new?edit=${b.id}`}
+                          className="text-sm text-primary hover:underline"
+                        >
+                          Edit
+                        </Link>
+                        <Button
+                          variant="destructive"
+                          size="icon-sm"
+                          disabled={deletingId === b.id}
+                          onClick={() => void handleDelete(b.id)}
+                          aria-label="Delete builder"
+                        >
+                          {deletingId === b.id ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Trash2 className="h-4 w-4" />
+                          )}
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -197,6 +241,14 @@ export default function BuildersPage() {
           </div>
         </CardContent>
       </Card>
+
+      <Pagination
+        page={page}
+        totalPages={totalPages}
+        total={total}
+        label="builders"
+        onChange={setPage}
+      />
     </div>
   );
 }

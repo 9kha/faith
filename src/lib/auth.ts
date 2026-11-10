@@ -1,7 +1,18 @@
 import { NextAuthOptions, getServerSession } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { compare } from "bcryptjs";
+import { verify as verifyArgon2 } from "@node-rs/argon2";
 import { db } from "./db";
+
+/** Supports both argon2 (seeded hashes) and legacy bcryptjs hashes. */
+async function verifyPassword(hash: string, password: string): Promise<boolean> {
+  try {
+    if (hash.startsWith("$argon2")) return await verifyArgon2(hash, password);
+    return await compare(password, hash);
+  } catch {
+    return false;
+  }
+}
 
 export const authOptions: NextAuthOptions = {
   session: {
@@ -9,8 +20,8 @@ export const authOptions: NextAuthOptions = {
     maxAge: parseInt(process.env.SESSION_MAX_AGE || "86400", 10),
   },
   pages: {
-    signIn: "/admin/login",
-    error: "/admin/login",
+    signIn: "/login",
+    error: "/login",
   },
   providers: [
     CredentialsProvider({
@@ -29,7 +40,7 @@ export const authOptions: NextAuthOptions = {
 
         if (!user || !user.passwordHash || user.status !== "ACTIVE") return null;
 
-        const isValid = await compare(credentials.password, user.passwordHash);
+        const isValid = await verifyPassword(user.passwordHash, credentials.password);
 
         if (!isValid) return null;
 

@@ -59,7 +59,7 @@ export default function LoginPage() {
         return;
       }
 
-      router.push("/admin/admin/dashboard");
+      router.push("/admin/dashboard");
       router.refresh();
     } catch {
       setError("An unexpected error occurred");
@@ -68,7 +68,7 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen w-full items-center center bg-gray-50 px-4 py-6 sm:px-6 lg:px-8">
+    <div className="flex min-h-screen w-full items-center justify-center bg-gray-50 px-4 py-6 sm:px-6 lg:px-8">
       <div className="relative mx-auto max-w-md">
         <Card className="w-full">
           <CardHeader className="flex flex-col items-center space-y-4">
@@ -78,7 +78,7 @@ export default function LoginPage() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
                 </svg>
               </div>
-              <span className="text-2xl font-bold tracking-tight">ChannelPartner Pro</span>
+              <span className="text-2xl font-bold tracking-tight">Faith Venture Realty</span>
             </div>
             <CardTitle>Sign in to your account</CardTitle>
             <CardDescription>
@@ -86,44 +86,38 @@ export default function LoginPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Form form={form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                <FormField
-                  name="email"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Email address</FormLabel>
-                      <FormControl placeholder="admin@faithventure.com" {...field} />
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  name="password"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Password</FormLabel>
-                      <FormControl type="password" placeholder="••••••••" {...field} />
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                {error && (
-                  <div className="rounded-md bg-red-50 p-3 text-sm text-red-700">
-                    {error}
-                  </div>
+            <Form form={form} onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+              <FormField
+                name="email"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Email address</FormLabel>
+                    <FormControl placeholder="admin@faithventure.com" {...field} />
+                    <FormMessage />
+                  </FormItem>
                 )}
-                <Button
-                  type="submit"
-                  className="w-full"
-                  disabled={isLoading}
-                >
-                  {isLoading ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  ) : null}
-                  Sign in
-                </Button>
-              </form>
+              />
+              <FormField
+                name="password"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Password</FormLabel>
+                    <FormControl type="password" placeholder="••••••••" {...field} />
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              {error && (
+                <div className="rounded-md bg-red-50 p-3 text-sm text-red-700">
+                  {error}
+                </div>
+              )}
+              <Button type="submit" className="w-full" disabled={isLoading}>
+                {isLoading ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : null}
+                Sign in
+              </Button>
             </Form>
           </CardContent>
           <CardFooter className="flex flex-col gap-2">

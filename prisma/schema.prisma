@@ -298,6 +298,8 @@ model Builder {
   address          String?
   commissionTerms  String?
   agreementDocId   String?
+  videos           Json?
+  bannerConfig     Json?
   status           String   @default("active")
   seoTitle         String?
   seoDescription   String?
@@ -348,6 +350,11 @@ model Project {
   videoUrls         Json?
   virtualTourUrl    String?
   brochureId        String?
+  cadFiles          Json?
+  documents         Json?
+  commission        Json?
+  images            Json?
+  bannerConfig      Json?
   featured          Boolean  @default(false)
   sortOrder         Int      @default(0)
   publishedAt       DateTime?
@@ -688,22 +695,28 @@ model LeadActivity {
 
 model SiteVisit {
   id             String   @id @default(uuid())
-  leadId         String
+  leadId         String?
+  clientId       String?
   projectId      String?
   propertyId     String?
   scheduledAt    DateTime
   status         SiteVisitStatus @default(SCHEDULED)
   feedback       String?
   rating         Int?
+  notes          String?
+  pickupRequired Boolean  @default(false)
+  pickupAddress  String?
   organizedById  String?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
-  lead          Lead     @relation("LeadSiteVisit", fields: [leadId], references: [id])
+  client        Client?  @relation("ClientSiteVisit", fields: [clientId], references: [id], onDelete: Cascade)
+  lead          Lead?    @relation("LeadSiteVisit", fields: [leadId], references: [id], onDelete: SetNull)
   project       Project? @relation("ProjectSiteVisit", fields: [projectId], references: [id], onDelete: SetNull)
   property      Property? @relation("PropertySiteVisit", fields: [propertyId], references: [id], onDelete: SetNull)
   organizedBy   User?    @relation("SiteVisitOrganizer", fields: [organizedById], references: [id], onDelete: SetNull)
 
+  @@index([clientId])
   @@index([leadId])
   @@index([scheduledAt])
   @@index([status])
@@ -725,6 +738,7 @@ model Client {
   panDocument Media?   @relation(fields: [panId], references: [id], onDelete: SetNull)
   leads       Lead[]
   bookings    Booking[] @relation("ClientBooking")
+  siteVisits  SiteVisit[] @relation("ClientSiteVisit")
 
   @@index([phone])
   @@index([email])

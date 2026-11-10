@@ -37,6 +37,9 @@ yarn-error.log*
 *.db
 dev.db
 
+# user uploads (do not version control; served via Vercel Blob in production)
+/uploads/
+
 # vercel
 .vercel
 

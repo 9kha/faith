@@ -1,85 +1,197 @@
 import { db } from "@/lib/db";
 import { logActivity } from "@/lib/activity-log";
+import { getPrimaryImages } from "@/lib/media";
 import type { Property, PropertyListingType, PropertyCategory, PropertyStatus } from "@prisma/client";
 
-export async function getProperties(params?: {
+type SortOption = "newest" | "price_asc" | "price_desc" | "area_desc";
+
+function buildWhere(params: {
   search?: string;
+  location?: string;
   builderId?: string;
   projectId?: string;
   listingType?: string;
   category?: string;
   status?: string;
   city?: string;
+  locality?: string;
+  bhk?: string;
+  verified?: boolean;
+  priceMin?: number;
+  priceMax?: number;
   featured?: boolean;
-  limit?: number;
-  offset?: number;
 }) {
   const {
     search,
+    location,
     builderId,
     projectId,
     listingType,
     category,
     status,
     city,
+    locality,
+    bhk,
+    verified,
+    priceMin,
+    priceMax,
     featured,
+  } = params;
+
+  const andConditions: any[] = [{ deletedAt: null }];
+
+  const price =
+    priceMin !== undefined || priceMax !== undefined
+      ? {
+          ...(priceMin !== undefined ? { gte: priceMin } : {}),
+          ...(priceMax !== undefined ? { lte: priceMax } : {}),
+        }
+      : undefined;
+
+  if (price) {
+    andConditions.push({ OR: [{ price }, { rent: price }] });
+  }
+
+  if (search) {
+    andConditions.push({
+      OR: [
+        { title: { contains: search } },
+        { city: { contains: search } },
+        { locality: { contains: search } },
+        { description: { contains: search } },
+      ],
+    });
+  }
+
+  const effectiveLoc = location?.trim();
+  if (effectiveLoc) {
+    andConditions.push({
+      OR: [
+        { city: { contains: effectiveLoc } },
+        { locality: { contains: effectiveLoc } },
+        { title: { contains: effectiveLoc } },
+        { description: { contains: effectiveLoc } },
+      ],
+    });
+  } else {
+    if (city?.trim()) {
+      const c = city.trim();
+      andConditions.push({
+        OR: [
+          { city: { contains: c } },
+          { locality: { contains: c } },
+        ],
+      });
+    }
+    if (locality?.trim()) {
+      andConditions.push({ locality: { contains: locality.trim() } });
+    }
+  }
+
+  if (builderId) andConditions.push({ builderId });
+  if (projectId) andConditions.push({ projectId });
+  if (listingType) andConditions.push({ listingType: listingType as PropertyListingType });
+  if (category) andConditions.push({ category: category as PropertyCategory });
+  if (status) andConditions.push({ status: status as PropertyStatus });
+  if (bhk) andConditions.push({ bhk: { contains: bhk } });
+  if (verified !== undefined) andConditions.push({ verified });
+  if (featured !== undefined) andConditions.push({ featured });
+
+  return { AND: andConditions };
+}
+
+const SORT_ORDER: Record<SortOption, Array<Record<string, "asc" | "desc">>> = {
+  newest: [{ featured: "desc" }, { createdAt: "desc" }],
+  price_asc: [{ price: "asc" }, { rent: "asc" }],
+  price_desc: [{ price: "desc" }, { rent: "desc" }],
+  area_desc: [{ area: "desc" }],
+};
+
+export async function getProperties(params?: {
+  search?: string;
+  location?: string;
+  builderId?: string;
+  projectId?: string;
+  listingType?: string;
+  category?: string;
+  status?: string;
+  city?: string;
+  locality?: string;
+  bhk?: string;
+  verified?: boolean;
+  priceMin?: number;
+  priceMax?: number;
+  featured?: boolean;
+  sort?: string;
+  limit?: number;
+  offset?: number;
+}) {
+  const {
+    search,
+    location,
+    builderId,
+    projectId,
+    listingType,
+    category,
+    status,
+    city,
+    locality,
+    bhk,
+    verified,
+    priceMin,
+    priceMax,
+    featured,
+    sort,
     limit = 50,
     offset = 0,
   } = params || {};
 
+  const where = buildWhere({
+    search,
+    location,
+    builderId,
+    projectId,
+    listingType,
+    category,
+    status,
+    city,
+    locality,
+    bhk,
+    verified,
+    priceMin,
+    priceMax,
+    featured,
+  });
+
+  const orderBy =
+    SORT_ORDER[(sort as SortOption) ?? "newest"] ?? SORT_ORDER.newest;
+
   const [properties, total] = await Promise.all([
     db.property.findMany({
-      where: {
-        deletedAt: null,
-        ...(search
-          ? {
-              OR: [
-                { title: { contains: search } },
-                { city: { contains: search } },
-                { locality: { contains: search } },
-              ],
-            }
-          : {}),
-        ...(builderId ? { builderId } : {}),
-        ...(projectId ? { projectId } : {}),
-        ...(listingType ? { listingType: listingType as PropertyListingType } : {}),
-        ...(category ? { category: category as PropertyCategory } : {}),
-        ...(status ? { status: status as PropertyStatus } : {}),
-        ...(city ? { city } : {}),
-        ...(featured !== undefined ? { featured } : {}),
-      },
+      where,
       include: {
         builder: { select: { id: true, name: true, slug: true } },
         project: { select: { id: true, name: true, slug: true } },
       },
-      orderBy: [{ featured: "desc" }, { createdAt: "desc" }],
+      orderBy,
       take: limit,
       skip: offset,
     }),
-    db.property.count({
-      where: {
-        deletedAt: null,
-        ...(search
-          ? {
-              OR: [
-                { title: { contains: search } },
-                { city: { contains: search } },
-                { locality: { contains: search } },
-              ],
-            }
-          : {}),
-        ...(builderId ? { builderId } : {}),
-        ...(projectId ? { projectId } : {}),
-        ...(listingType ? { listingType: listingType as PropertyListingType } : {}),
-        ...(category ? { category: category as PropertyCategory } : {}),
-        ...(status ? { status: status as PropertyStatus } : {}),
-        ...(city ? { city } : {}),
-        ...(featured !== undefined ? { featured } : {}),
-      },
-    }),
+    db.property.count({ where }),
   ]);
 
-  return { properties, total };
+  const images = await getPrimaryImages(
+    "Property",
+    properties.map((p) => p.id)
+  );
+
+  return {
+    properties: properties.map((p) => ({
+      ...p,
+      imageUrl: images.get(p.id) ?? null,
+    })),
+    total,
+  };
 }
 
 export async function getPropertyById(id: string) {

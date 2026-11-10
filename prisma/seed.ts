@@ -408,34 +408,45 @@ async function main() {
     { unitNo: "301", floor: 3, bhk: "3 BHK", area: 1400, price: 720000000 },
   ];
 
-  // Create a tower first
-  const tower = await db.tower.create({
-    data: {
-      projectId: project.id,
-      name: "Tower A",
-      floors: 5,
-      sortOrder: 1,
-    },
-  });
+  // Create a tower first (idempotent — re-running the seed must not duplicate)
+  const existingUnits = await db.unit.count({ where: { projectId: project.id } });
 
-  for (const u of sampleUnits) {
-    await db.unit.create({
-      data: {
-        projectId: project.id,
-        towerId: tower.id,
-        unitNo: u.unitNo,
-        floor: u.floor,
-        bhk: u.bhk,
-        area: u.area,
-        facing: u.floor % 2 === 0 ? "East" : "West",
-        price: u.price,
-        status: "AVAILABLE",
-        sortOrder: u.floor,
-      },
+  if (existingUnits === 0) {
+    const existingTower = await db.tower.findFirst({
+      where: { projectId: project.id, name: "Tower A" },
     });
-  }
+    const tower =
+      existingTower ??
+      (await db.tower.create({
+        data: {
+          projectId: project.id,
+          name: "Tower A",
+          floors: 5,
+          sortOrder: 1,
+        },
+      }));
 
-  console.log(`✅ Sample units created: ${sampleUnits.length}`);
+    for (const u of sampleUnits) {
+      await db.unit.create({
+        data: {
+          projectId: project.id,
+          towerId: tower.id,
+          unitNo: u.unitNo,
+          floor: u.floor,
+          bhk: u.bhk,
+          area: u.area,
+          facing: u.floor % 2 === 0 ? "East" : "West",
+          price: u.price,
+          status: "AVAILABLE",
+          sortOrder: u.floor,
+        },
+      });
+    }
+
+    console.log(`✅ Sample units created: ${sampleUnits.length}`);
+  } else {
+    console.log(`⏭️  Units already present (${existingUnits}), skipping`);
+  }
 
   // 10. Create default settings
   const defaultSettings = [
@@ -485,6 +496,10 @@ async function main() {
   }
 
   console.log("✅ Default settings created");
+  // 11. Demo content: media, builders, projects, properties, blog, leads, pages
+  const { seedDemo } = await import("./seed-demo");
+  await seedDemo();
+
   console.log("🎉 Seed completed successfully!");
 }
 

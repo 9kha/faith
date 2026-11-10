@@ -21,10 +21,10 @@ export async function POST(req: Request): Promise<NextResponse> {
     const buffer = Buffer.from(await file.arrayBuffer());
     const mime = file.type || "application/octet-stream";
 
-    // Validate file size (max 10MB)
-    const maxSize = 10 * 1024 * 1024;
+    // Validate file size (max 50MB for CAD/3D and large assets)
+    const maxSize = 50 * 1024 * 1024;
     if (buffer.length > maxSize) {
-      return NextResponse.json({ error: "File too large" }, { status: 400 });
+      return NextResponse.json({ error: "File too large. Maximum size is 50MB." }, { status: 400 });
     }
 
     let url: string;
@@ -32,7 +32,7 @@ export async function POST(req: Request): Promise<NextResponse> {
     let height: number | undefined;
     let size = buffer.length;
 
-    if (isImageFile(mime)) {
+    if (isImageFile(mime, file.name)) {
       const processed = await processImage(buffer, file.name);
       url = processed.medium;
       width = processed.width;
@@ -46,7 +46,13 @@ export async function POST(req: Request): Promise<NextResponse> {
 
     const media = await db.media.create({
       data: {
-        type: isImageFile(mime) ? "IMAGE" : mime.startsWith("video/") ? "VIDEO" : mime === "application/pdf" ? "PDF" : "DOCUMENT",
+        type: isImageFile(mime, file.name)
+          ? "IMAGE"
+          : mime.startsWith("video/")
+          ? "VIDEO"
+          : mime === "application/pdf"
+          ? "PDF"
+          : "DOCUMENT",
         url,
         path: url,
         mime,
@@ -62,8 +68,9 @@ export async function POST(req: Request): Promise<NextResponse> {
     return NextResponse.json({ media }, { status: 201 });
   } catch (error) {
     console.error("Upload error:", error);
+    const message = error instanceof Error ? error.message : "Upload failed";
     return NextResponse.json(
-      { error: "Upload failed" },
+      { error: message },
       { status: 500 }
     );
   }

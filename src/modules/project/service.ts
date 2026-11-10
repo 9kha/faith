@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
 import { logActivity } from "@/lib/activity-log";
+import { getPrimaryImages } from "@/lib/media";
 import type { Project, ProjectType, ProjectStatus } from "@prisma/client";
 
 export async function getProjects(params?: {
@@ -71,7 +72,18 @@ export async function getProjects(params?: {
     }),
   ]);
 
-  return { projects, total };
+  const images = await getPrimaryImages(
+    "Project",
+    projects.map((p) => p.id)
+  );
+
+  return {
+    projects: projects.map((p) => ({
+      ...p,
+      imageUrl: images.get(p.id) ?? null,
+    })),
+    total,
+  };
 }
 
 export async function getProjectById(id: string) {
@@ -96,6 +108,45 @@ export async function getProjectBySlug(slug: string) {
   });
 }
 
+async function syncProjectMediable(projectId: string, imageUrls: unknown) {
+  if (!Array.isArray(imageUrls)) return;
+  const urls = imageUrls.filter((u): u is string => typeof u === "string" && u.trim().length > 0);
+
+  try {
+    await db.mediable.deleteMany({
+      where: { entityType: "Project", entityId: projectId },
+    });
+
+    for (let i = 0; i < urls.length; i++) {
+      const url = urls[i];
+      let media = await db.media.findFirst({ where: { url } });
+      if (!media) {
+        media = await db.media.create({
+          data: {
+            url,
+            path: url,
+            type: "IMAGE",
+            mime: "image/webp",
+            size: 1024,
+            alt: `Project image ${i + 1}`,
+          },
+        });
+      }
+      await db.mediable.create({
+        data: {
+          mediaId: media.id,
+          entityType: "Project",
+          entityId: projectId,
+          role: i === 0 ? "image" : "gallery",
+          sortOrder: i,
+        },
+      });
+    }
+  } catch (err) {
+    console.error("Failed to sync project mediables:", err);
+  }
+}
+
 export async function createProject(
   data: Record<string, unknown>,
   userId?: string,
@@ -105,7 +156,7 @@ export async function createProject(
     data: {
       name: String(data.name || ""),
       slug: String(data.slug || ""),
-      builderId: String(data.builderId || ""),
+      builder: { connect: { id: String(data.builderId) } },
       type: (data.type as ProjectType) || "APARTMENT",
       status: (data.status as ProjectStatus) || "UPCOMING",
       city: String(data.city || ""),
@@ -127,12 +178,28 @@ export async function createProject(
       totalUnits: (data.totalUnits as number | undefined) || null,
       towers: (data.towers as number | undefined) || null,
       description: (data.description as string | undefined) || null,
+      highlights: data.highlights !== undefined ? (data.highlights as any) : null,
+      paymentPlan: data.paymentPlan !== undefined ? (data.paymentPlan as any) : null,
+      faqs: data.faqs !== undefined ? (data.faqs as any) : null,
+      videoUrls: data.videoUrls !== undefined ? (data.videoUrls as any) : null,
+      specifications: data.specifications !== undefined ? (data.specifications as any) : null,
+      cadFiles: data.cadFiles !== undefined ? (data.cadFiles as any) : null,
+      documents: data.documents !== undefined ? (data.documents as any) : null,
+      commission: data.commission !== undefined ? (data.commission as any) : null,
+      images: data.images !== undefined ? (data.images as any) : null,
+      bannerConfig: data.bannerConfig !== undefined ? (data.bannerConfig as any) : null,
+      virtualTourUrl: (data.virtualTourUrl as string | undefined) || null,
+      ...(data.brochureId ? { brochure: { connect: { id: String(data.brochureId) } } } : {}),
       featured: Boolean(data.featured),
       sortOrder: Number(data.sortOrder) || 0,
       seoTitle: (data.seoTitle as string | undefined) || null,
       seoDescription: (data.seoDescription as string | undefined) || null,
     },
   });
+
+  if (data.images !== undefined) {
+    await syncProjectMediable(project.id, data.images);
+  }
 
   if (userId) {
     await logActivity({
@@ -161,7 +228,7 @@ export async function updateProject(
     data: {
       name: String(data.name || ""),
       slug: String(data.slug || ""),
-      builderId: String(data.builderId || ""),
+      builder: { connect: { id: String(data.builderId) } },
       type: (data.type as ProjectType) || "APARTMENT",
       status: (data.status as ProjectStatus) || "UPCOMING",
       city: String(data.city || ""),
@@ -183,12 +250,32 @@ export async function updateProject(
       totalUnits: (data.totalUnits as number | undefined) || null,
       towers: (data.towers as number | undefined) || null,
       description: (data.description as string | undefined) || null,
+      highlights: data.highlights !== undefined ? (data.highlights as any) : null,
+      paymentPlan: data.paymentPlan !== undefined ? (data.paymentPlan as any) : null,
+      faqs: data.faqs !== undefined ? (data.faqs as any) : null,
+      videoUrls: data.videoUrls !== undefined ? (data.videoUrls as any) : null,
+      specifications: data.specifications !== undefined ? (data.specifications as any) : null,
+      cadFiles: data.cadFiles !== undefined ? (data.cadFiles as any) : null,
+      documents: data.documents !== undefined ? (data.documents as any) : null,
+      commission: data.commission !== undefined ? (data.commission as any) : null,
+      images: data.images !== undefined ? (data.images as any) : null,
+      bannerConfig: data.bannerConfig !== undefined ? (data.bannerConfig as any) : null,
+      virtualTourUrl: (data.virtualTourUrl as string | undefined) || null,
+      ...(data.brochureId
+        ? { brochure: { connect: { id: String(data.brochureId) } } }
+        : data.brochureId === null
+        ? { brochure: { disconnect: true } }
+        : {}),
       featured: Boolean(data.featured),
       sortOrder: Number(data.sortOrder) || 0,
       seoTitle: (data.seoTitle as string | undefined) || null,
       seoDescription: (data.seoDescription as string | undefined) || null,
     },
   });
+
+  if (data.images !== undefined) {
+    await syncProjectMediable(id, data.images);
+  }
 
   if (userId) {
     await logActivity({

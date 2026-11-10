@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -13,13 +14,13 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Plus, Image as ImageIcon, FileText, Search, Folder } from "lucide-react";
+import { Plus, Image as ImageIcon, FileText, Search, Folder, Trash2, Loader2 } from "lucide-react";
+import { Pagination } from "@/components/ui/pagination";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import {
   Form,
@@ -55,32 +56,45 @@ export default function MediaPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [uploading, setUploading] = useState(false);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [total, setTotal] = useState(0);
+  const [uploadOpen, setUploadOpen] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const uploadForm = useForm<{ alt: string; caption: string }>({
+    defaultValues: { alt: "", caption: "" },
+  });
 
   const loadMedia = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/media");
+      const params = new URLSearchParams({
+        page: String(page),
+        limit: "24",
+      });
+      if (search) params.set("search", search);
+      const res = await fetch(`/api/media?${params}`);
       const data = await res.json();
       setMedia(data.media || []);
+      setTotal(data.total || 0);
+      setTotalPages(data.totalPages || 1);
     } catch {
       setMedia([]);
+      setTotal(0);
+      setTotalPages(1);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [page, search]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
       loadMedia();
-    }, 0);
+    }, search ? 300 : 0);
     return () => clearTimeout(timer);
-  }, [loadMedia]);
+  }, [loadMedia, search]);
 
-  const filtered = media.filter(
-    (m) =>
-      m.alt?.toLowerCase().includes(search.toLowerCase()) ||
-      m.url.toLowerCase().includes(search.toLowerCase())
-  );
+  const filtered = media;
 
   const handleUpload = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -99,6 +113,20 @@ export default function MediaPage() {
     }
   };
 
+  const handleDelete = async (id: string) => {
+    if (!confirm("Are you sure you want to delete this media file?")) return;
+    setDeletingId(id);
+    try {
+      const res = await fetch(`/api/media/${id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("Delete failed");
+      await loadMedia();
+    } catch {
+      alert("Failed to delete media file");
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex h-full items-center justify-center">
@@ -114,12 +142,15 @@ export default function MediaPage() {
           <h1 className="text-2xl font-bold">Media Library</h1>
           <p className="text-muted-foreground">Manage your images, videos, and documents</p>
         </div>
-        <DialogTrigger>
-          <Button variant="outline" size="sm" disabled={uploading}>
-            <Plus className="mr-2 h-4 w-4" />
-            {uploading ? "Uploading..." : "Upload"}
-          </Button>
-        </DialogTrigger>
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={uploading}
+          onClick={() => setUploadOpen(true)}
+        >
+          <Plus className="mr-2 h-4 w-4" />
+          {uploading ? "Uploading..." : "Upload"}
+        </Button>
       </div>
 
       <div className="flex items-center gap-4">
@@ -128,7 +159,10 @@ export default function MediaPage() {
           <Input
             placeholder="Search media..."
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setPage(1);
+            }}
             className="pl-9"
           />
         </div>
@@ -158,6 +192,23 @@ export default function MediaPage() {
               <Badge className="absolute top-2 right-2 bg-muted/50 backdrop-blur">
                 {item.mime.split("/")[0].toUpperCase()}
               </Badge>
+              <Button
+                variant="destructive"
+                size="icon"
+                className="absolute bottom-2 right-2 h-8 w-8 opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
+                disabled={deletingId === item.id}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  void handleDelete(item.id);
+                }}
+                aria-label="Delete media"
+              >
+                {deletingId === item.id ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Trash2 className="h-4 w-4" />
+                )}
+              </Button>
             </div>
             <CardContent className="p-3 pt-2">
               <p className="text-xs text-muted-foreground truncate">{item.alt}</p>
@@ -173,13 +224,12 @@ export default function MediaPage() {
         )}
       </div>
 
-      <Dialog>
+      <Dialog open={uploadOpen} onOpenChange={setUploadOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Upload Media</DialogTitle>
           </DialogHeader>
-          <Form>
-            <form onSubmit={handleUpload} className="space-y-4">
+          <Form form={uploadForm} onSubmit={handleUpload} className="space-y-4">
               <FormField
                 name="file"
                 render={({ field }) => (
@@ -219,10 +269,17 @@ export default function MediaPage() {
               <Button type="submit" className="w-full" disabled={uploading}>
                 Upload
               </Button>
-            </form>
           </Form>
         </DialogContent>
       </Dialog>
+
+      <Pagination
+        page={page}
+        totalPages={totalPages}
+        total={total}
+        label="assets"
+        onChange={setPage}
+      />
     </div>
   );
 }

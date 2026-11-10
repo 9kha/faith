@@ -58,31 +58,31 @@ export default function BuildersPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="mx-auto max-w-[1720px] space-y-6 px-4 py-10 sm:px-6 lg:px-8">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-serif font-bold text-gray-900">Builders</h1>
-          <p className="text-gray-600 mt-1">
+          <h1 className="text-3xl font-serif font-bold text-gray-900 dark:text-white">Builders</h1>
+          <p className="text-gray-600 dark:text-slate-400 mt-1">
             Explore projects from verified RERA-registered builders
           </p>
         </div>
       </div>
 
       <div className="relative w-full max-w-md">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-slate-500" />
         <Input
           placeholder="Search builders..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="pl-10"
+          className="pl-10 dark:bg-slate-900 dark:border-slate-800"
         />
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {builders.length === 0 ? (
           <div className="col-span-full flex flex-col items-center justify-center py-16 text-center">
-            <Building2 className="h-12 w-12 text-gray-300 mb-4" />
-            <h3 className="text-lg font-medium text-gray-900">No builders found</h3>
+            <Building2 className="h-12 w-12 text-gray-300 dark:text-slate-600 mb-4" />
+            <h3 className="text-lg font-medium text-gray-900 dark:text-white">No builders found</h3>
           </div>
         ) : (
           builders.map((b) => (
@@ -96,34 +96,34 @@ export default function BuildersPage() {
 
 function BuilderCard({ builder }: { builder: BuilderData }) {
   return (
-    <Link href={`/builders/${builder.slug}`} className="block">
-      <Card className="overflow-hidden hover:shadow-xl transition-all duration-300">
+    <Link href={`/builders/${builder.slug}`} className="group block">
+      <Card className="overflow-hidden hover:shadow-xl transition-all duration-300 dark:bg-slate-900/90 dark:border-slate-800">
         <div className="relative h-48 overflow-hidden">
           {builder.logoUrl ? (
             <Image
               src={builder.logoUrl}
               alt={builder.name}
               fill
-              className="object-cover"
+              className="object-cover group-hover:scale-105 transition-transform duration-500"
               sizes="(max-width: 768px) 100vw, 33vw"
               priority={false}
             />
           ) : (
-            <div className="h-full w-full bg-gray-100 flex items-center justify-center">
-              <Building2 className="h-12 w-12 text-gray-300" />
+            <div className="h-full w-full bg-gray-100 dark:bg-slate-800 flex items-center justify-center">
+              <Building2 className="h-12 w-12 text-gray-300 dark:text-slate-600" />
             </div>
           )}
-          <Badge className="absolute top-2 right-2 bg-gray-100 text-gray-700 text-xs">
+          <Badge className="absolute top-2 right-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs">
             {builder.status}
           </Badge>
         </div>
         <div className="p-4">
-          <h3 className="font-semibold text-gray-900 group-hover:text-primary transition-colors">
+          <h3 className="font-semibold text-gray-900 dark:text-white group-hover:text-primary transition-colors">
             {builder.name}
           </h3>
-          <p className="text-sm text-gray-500 mt-1">{builder.projectCount} project(s)</p>
+          <p className="text-sm text-gray-500 dark:text-slate-400 mt-1">{builder.projectCount} project(s)</p>
           {builder.reraNo && (
-            <p className="text-xs text-primary mt-1">RERA: {builder.reraNo}</p>
+            <p className="text-xs text-primary mt-1 font-medium">RERA: {builder.reraNo}</p>
           )}
         </div>
       </Card>

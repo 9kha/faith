@@ -1,8 +1,83 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { z } from "zod";
+import type { Prisma, LeadSource, LeadStatus } from "@prisma/client";
 
 export const runtime = "nodejs";
+
+const DEFAULT_LIMIT = 25;
+const MAX_LIMIT = 100;
+
+export async function GET(req: Request): Promise<NextResponse> {
+  try {
+    const { searchParams } = new URL(req.url);
+    const keyword = searchParams.get("search") || undefined;
+    const status = searchParams.get("status") || undefined;
+    const source = searchParams.get("source") || undefined;
+    const days = parseInt(searchParams.get("days") || "", 10);
+
+    const limit = clampInt(searchParams.get("limit"), DEFAULT_LIMIT, 1, MAX_LIMIT);
+    const page = Math.max(1, parseInt(searchParams.get("page") || "1", 10) || 1);
+
+    const dateFilter =
+      !Number.isNaN(days) && days > 0
+        ? { gte: new Date(Date.now() - days * 24 * 60 * 60 * 1000) }
+        : undefined;
+
+    const where: Prisma.LeadWhereInput = {
+      deletedAt: null,
+      ...(status ? { status: status as LeadStatus } : {}),
+      ...(source ? { source: source as LeadSource } : {}),
+      ...(dateFilter ? { createdAt: dateFilter } : {}),
+      ...(keyword
+        ? {
+            OR: [
+              { name: { contains: keyword } },
+              { phone: { contains: keyword } },
+              { email: { contains: keyword } },
+              { message: { contains: keyword } },
+            ],
+          }
+        : {}),
+    };
+
+    const [leads, total] = await Promise.all([
+      db.lead.findMany({
+        where,
+        include: {
+          project: { select: { name: true, slug: true } },
+          property: { select: { title: true, slug: true } },
+          assignedTo: { select: { id: true, name: true, email: true } },
+          client: { select: { id: true, name: true } },
+        },
+        orderBy: { createdAt: "desc" },
+        take: limit,
+        skip: (page - 1) * limit,
+      }),
+      db.lead.count({ where }),
+    ]);
+
+    return NextResponse.json({
+      leads,
+      total,
+      page,
+      limit,
+      totalPages: Math.max(1, Math.ceil(total / limit)),
+    });
+  } catch (error) {
+    console.error("Lead list error:", error);
+    return NextResponse.json(
+      { error: "Failed to load leads" },
+      { status: 500 }
+    );
+  }
+}
+
+function clampInt(raw: string | null, fallback: number, min: number, max: number) {
+  const n = parseInt(raw || "", 10);
+  if (Number.isNaN(n)) return fallback;
+  return Math.min(max, Math.max(min, n));
+}
 
 const leadSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),

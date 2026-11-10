@@ -1,166 +1,329 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
   Phone,
   MessageCircle,
   Mail,
   MapPin,
-  Clock,
+  Home,
+  ShieldCheck,
+  Send,
+  Building2,
+  Heart,
 } from "lucide-react";
+import { defaultFooterConfig, type FooterConfig } from "@/lib/settings";
 
-export function PublicFooter() {
+const quickLinks = [
+  { label: "Buy Properties", href: "/buy" },
+  { label: "Rent Properties", href: "/rent" },
+  { label: "Featured Projects", href: "/projects" },
+  { label: "Verified Builders", href: "/builders" },
+  { label: "Real Estate Blog", href: "/blog" },
+  { label: "EMI Calculator", href: "/emi-calculator" },
+];
+
+const propertyTypes = [
+  { label: "Flats & Apartments", href: "/buy?category=FLAT" },
+  { label: "Luxury Villas", href: "/buy?category=VILLA" },
+  { label: "Residential Plots", href: "/buy?category=PLOT" },
+  { label: "Commercial Shops", href: "/buy?category=SHOP" },
+  { label: "Office Spaces", href: "/buy?category=OFFICE" },
+  { label: "Ready to Move", href: "/buy?status=AVAILABLE" },
+];
+
+const companyLinks = [
+  { label: "About Us", href: "/about" },
+  { label: "Contact Us", href: "/contact" },
+  { label: "Partner Program", href: "/partner-program" },
+  { label: "Privacy Policy", href: "/privacy-policy" },
+  { label: "Terms of Service", href: "/terms-of-service" },
+];
+
+export function PublicFooter({ initialConfig }: { initialConfig?: FooterConfig }) {
+  const [config, setConfig] = useState<FooterConfig>(initialConfig || defaultFooterConfig);
+  const [subscribed, setSubscribed] = useState(false);
+  const [email, setEmail] = useState("");
+
+  useEffect(() => {
+    if (initialConfig) setConfig(initialConfig);
+  }, [initialConfig]);
+
+  useEffect(() => {
+    const handleUpdate = (e: CustomEvent<Partial<FooterConfig>>) => {
+      if (e.detail) {
+        setConfig((prev) => ({ ...prev, ...e.detail }));
+      }
+    };
+    window.addEventListener("footer-config-updated" as any, handleUpdate as any);
+    return () => window.removeEventListener("footer-config-updated" as any, handleUpdate as any);
+  }, []);
+
+  const handleSubscribe = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (email) {
+      setSubscribed(true);
+      setEmail("");
+    }
+  };
+
   return (
-    <footer className="border-t bg-gray-50">
-      <div className="px-4 py-8 md:px-8 lg:px-12">
-        {/* Top section: company info + contact */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
-          <div className="col-span-1 md:col-span-2">
-            <div className="flex items-center gap-2 mb-4">
-              <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center text-primary-foreground">
-                <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2">
-                  <path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-                </svg>
-              </div>
-              <span className="font-bold text-lg tracking-tight text-gray-900">
-                ChannelPartner Pro
+    <footer className="border-t border-border bg-card text-foreground transition-colors">
+      {/* Top Newsletter & Assistance Strip */}
+      {config.showNewsletter && (
+        <div className="border-b border-border bg-muted/30 py-10 transition-colors">
+          <div className="container-page flex flex-col items-center justify-between gap-6 lg:flex-row">
+            <div className="text-center lg:text-left">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
+                <Mail className="h-3.5 w-3.5" /> Market Insights
               </span>
+              <h3 className="mt-2 text-xl font-bold text-foreground sm:text-2xl">
+                {config.newsletterHeading}
+              </h3>
+              <p className="mt-1 text-sm text-muted-foreground">
+                {config.newsletterSubheading}
+              </p>
             </div>
-            <p className="text-sm text-gray-600 mb-6 max-w-xs">
-              Independent channel partner helping you buy, rent, and invest in
-              properties across Central India. RERA compliant, transparent, and
-              customer-first.
+            {subscribed ? (
+              <div className="flex items-center gap-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20 px-5 py-3 text-sm font-semibold text-emerald-600 dark:text-emerald-400">
+                <ShieldCheck className="h-5 w-5" />
+                <span>Thank you for subscribing! We&apos;ll keep you posted.</span>
+              </div>
+            ) : (
+              <form
+                onSubmit={handleSubscribe}
+                className="flex w-full max-w-md items-center gap-2"
+              >
+                <input
+                  type="email"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="Enter your email address"
+                  className="h-11 flex-1 rounded-xl border border-input bg-background px-4 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary transition-colors"
+                />
+                <button
+                  type="submit"
+                  className="inline-flex h-11 items-center justify-center gap-1.5 rounded-xl bg-primary px-5 text-sm font-semibold text-primary-foreground transition hover:opacity-90 cursor-pointer shadow-xs"
+                >
+                  <span>Subscribe</span>
+                  <Send className="h-3.5 w-3.5" />
+                </button>
+              </form>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Main Footer Links */}
+      <div className="container-page py-14 lg:py-16">
+        <div className="grid grid-cols-1 gap-10 sm:grid-cols-2 lg:grid-cols-5">
+          {/* Brand Info */}
+          <div className="lg:col-span-2 space-y-4">
+            <Link href="/" className="inline-flex items-center gap-2.5 group">
+              {config.logoUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={config.logoUrl}
+                  alt={config.brandName}
+                  className="h-10 w-auto max-w-[170px] object-contain transition-transform group-hover:scale-105"
+                />
+              ) : (
+                <span className="grid size-10 place-items-center rounded-xl bg-primary text-primary-foreground shadow-md transition-transform group-hover:scale-105">
+                  <Home size={20} />
+                </span>
+              )}
+              <span className="flex flex-col">
+                <span className="text-xl font-bold tracking-tight text-foreground">
+                  {config.brandName}
+                </span>
+                <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-primary">
+                  {config.tagline?.replace(/channelpartner\s*pro/gi, "Your Trusted Real Estate Partner")?.replace(/channelpartner/gi, "Faith Venture Realty")}
+                </span>
+              </span>
+            </Link>
+            <p className="max-w-sm text-sm leading-relaxed text-muted-foreground">
+              {config.description?.replace(/channel\s*partner/gi, "real estate consultancy")}
             </p>
-            <div className="flex gap-4">
-              <SocialIcon href="https://instagram.com" label="Instagram">
-                <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2">
+
+            {/* Trust Badges */}
+            {config.showTrustBadges && (
+              <div className="flex flex-wrap gap-2 pt-1">
+                <span className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-600 dark:text-emerald-400">
+                  <ShieldCheck className="h-3.5 w-3.5" /> {config.badge1Text}
+                </span>
+                <span className="inline-flex items-center gap-1.5 rounded-lg border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
+                  <Building2 className="h-3.5 w-3.5" /> {config.badge2Text}
+                </span>
+              </div>
+            )}
+
+            {/* Social Icons */}
+            {config.showSocialLinks && (
+              <div className="flex flex-wrap gap-2 pt-2">
+                <SocialIcon href="https://www.instagram.com/justbelieve_7" label="Instagram (@justbelieve_7)">
                   <rect width="20" height="20" x="2" y="2" rx="5" ry="5" />
                   <path d="M16 11.37A4 4 0 1112.63 8 4 4 0 0116 11.37z" />
                   <line x1="17.5" x2="17.51" y1="6.5" y2="6.5" />
-                </svg>
-              </SocialIcon>
-              <SocialIcon href="https://facebook.com" label="Facebook">
-                <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2">
-                  <path d="M18 2h-3a5 5 0 00-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 011-1h3z" />
-                </svg>
-              </SocialIcon>
-              <SocialIcon href="https://twitter.com" label="Twitter">
-                <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2">
-                  <path d="M23 3a10.9 10.9 0 01-3.14 1.53 4.48 4.48 0 00-7.86 3v1A10.66 10.66 0 013 4s-4 9 5 13a11.64 11.64 0 01-7 2c9 5 20 0 20-11.5a4.5 4.5 0 00-.08-.83A7.72 7.72 0 0023 3z" />
-                </svg>
-              </SocialIcon>
-              <SocialIcon href="https://youtube.com" label="YouTube">
-                <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2">
+                </SocialIcon>
+                <SocialIcon href="https://youtube.com/@faithventurerealty" label="YouTube">
                   <path d="M22.54 6.42a2.78 2.78 0 00-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 00-1.94 2A29 29 0 001 11.75a29 29 0 00.46 5.33A2.78 2.78 0 003.4 19c1.72.46 8.6.46 8.6 0a2.78 2.78 0 001.94-2A29 29 0 0023 11.75a29 29 0 00.46-5.33A2.78 2.78 0 0022.54 6.42z" />
-                  <polyline points="10 15 15 12 10 9" />
-                </svg>
-              </SocialIcon>
+                  <polygon points="9.75 15.02 15.5 12 9.75 8.98 9.75 15.02" />
+                </SocialIcon>
+                <SocialIcon href="https://facebook.com/faithventurerealty" label="Facebook">
+                  <path d="M18 2h-3a5 5 0 00-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 011-1h3z" />
+                </SocialIcon>
+                <SocialIcon href="https://linkedin.com/company/faithventurerealty" label="LinkedIn">
+                  <path d="M16 8a6 6 0 016 6v7h-4v-7a2 2 0 00-2-2 2 2 0 00-2 2v7h-4v-7a6 6 0 016-6z" />
+                  <rect x="2" y="9" width="4" height="12" />
+                  <circle cx="4" cy="4" r="2" />
+                </SocialIcon>
+                <SocialIcon href="https://x.com/faithventure" label="X (Twitter)">
+                  <path d="M23 3a10.9 10.9 0 01-3.14 1.53 4.48 4.48 0 00-7.86 3v1A10.66 10.66 0 013 4s-4 9 5 13a11.64 11.64 0 01-7 2c9 5 20 0 20-11.5a4.5 4.5 0 00-.08-.83A7.72 7.72 0 0023 3z" />
+                </SocialIcon>
+                <SocialIcon href={`https://wa.me/${config.whatsapp.replace(/\D/g, "")}`} label="WhatsApp Channel">
+                  <path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z" />
+                </SocialIcon>
+              </div>
+            )}
+          </div>
+
+          {/* Quick Links */}
+          {config.showQuickLinks && (
+            <div>
+              <h4 className="text-xs font-bold uppercase tracking-wider text-foreground">
+                Explore Properties
+              </h4>
+              <ul className="mt-4 space-y-2.5 text-sm">
+                {quickLinks.map((l) => (
+                  <li key={l.href}>
+                    <Link
+                      href={l.href}
+                      className="text-muted-foreground transition hover:text-foreground hover:translate-x-0.5 inline-block"
+                    >
+                      {l.label}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {/* Property Categories */}
+          {config.showPropertyTypes && (
+            <div>
+              <h4 className="text-xs font-bold uppercase tracking-wider text-foreground">
+                Property Categories
+              </h4>
+              <ul className="mt-4 space-y-2.5 text-sm">
+                {propertyTypes.map((l) => (
+                  <li key={l.label}>
+                    <Link
+                      href={l.href}
+                      className="text-muted-foreground transition hover:text-foreground hover:translate-x-0.5 inline-block"
+                    >
+                      {l.label}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {/* Company & Support */}
+          {config.showCompanyLinks && (
+            <div>
+              <h4 className="text-xs font-bold uppercase tracking-wider text-foreground">
+                Company & Help
+              </h4>
+              <ul className="mt-4 space-y-2.5 text-sm">
+                {companyLinks.map((l) => (
+                  <li key={l.href}>
+                    <Link
+                      href={l.href}
+                      className="text-muted-foreground transition hover:text-foreground hover:translate-x-0.5 inline-block"
+                    >
+                      {l.label}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+              <div className="mt-6 pt-4 border-t border-border">
+                <a
+                  href={`https://wa.me/${config.whatsapp.replace(/\D/g, "")}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 rounded-xl bg-emerald-500/10 px-3.5 py-2 text-xs font-semibold text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 transition hover:bg-emerald-600 hover:text-white"
+                >
+                  <MessageCircle className="h-4 w-4" />
+                  <span>Chat on WhatsApp</span>
+                </a>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Contact Info Row */}
+        <div className="mt-12 grid grid-cols-1 gap-4 border-t border-border pt-8 text-sm sm:grid-cols-2 lg:grid-cols-4">
+          <div className="flex items-start gap-3">
+            <span className="mt-0.5 rounded-lg bg-primary/10 p-2 text-primary">
+              <Phone className="h-4 w-4" />
+            </span>
+            <div>
+              <p className="text-xs text-muted-foreground">Direct Helpline</p>
+              <a href={`tel:${config.phone.replace(/\s+/g, "")}`} className="font-semibold text-foreground hover:text-primary transition-colors">
+                {config.phone}
+              </a>
             </div>
           </div>
 
-          <div>
-            <h3 className="text-sm font-semibold text-gray-900 mb-4">Contact</h3>
-            <ul className="space-y-3 text-sm text-gray-600">
-              <li className="flex items-center gap-3">
-                <Phone size={16} className="text-primary" />
-                <span>+91 98765 43210</span>
-              </li>
-              <li className="flex items-center gap-3">
-                <MessageCircle size={16} className="text-primary" />
-                <span>+91 98765 43210 (WhatsApp)</span>
-              </li>
-              <li className="flex items-center gap-3">
-                <Mail size={16} className="text-primary" />
-                <a href="mailto:sales@channelpartner.example.com" className="hover:text-primary transition-colors">
-                  sales@channelpartner.example.com
-                </a>
-              </li>
-              <li className="flex items-center gap-3">
-                <MapPin size={16} className="text-primary" />
-                <span>123, Scheme 54, Vijay Nagar, Indore, MP 452010</span>
-              </li>
-              <li className="flex items-center gap-3">
-                <Clock size={16} className="text-primary" />
-                <span>Mon–Sat: 10:00 AM – 7:00 PM</span>
-              </li>
-            </ul>
+          <div className="flex items-start gap-3">
+            <span className="mt-0.5 rounded-lg bg-emerald-500/10 p-2 text-emerald-600 dark:text-emerald-400">
+              <MessageCircle className="h-4 w-4" />
+            </span>
+            <div>
+              <p className="text-xs text-muted-foreground">WhatsApp Support</p>
+              <a href={`https://wa.me/${config.whatsapp.replace(/\D/g, "")}`} target="_blank" rel="noopener noreferrer" className="font-semibold text-foreground hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors">
+                {config.whatsapp}
+              </a>
+            </div>
           </div>
 
-          <div>
-            <h3 className="text-sm font-semibold text-gray-900 mb-4">Quick Links</h3>
-            <ul className="space-y-3 text-sm text-gray-600">
-              <li>
-                <Link href="/buy" className="hover:text-primary transition-colors">
-                  Buy Properties
-                </Link>
-              </li>
-              <li>
-                <Link href="/rent" className="hover:text-primary transition-colors">
-                  Rent Properties
-                </Link>
-              </li>
-              <li>
-                <Link href="/projects" className="hover:text-primary transition-colors">
-                  New Projects
-                </Link>
-              </li>
-              <li>
-                <Link href="/builders" className="hover:text-primary transition-colors">
-                  Builders
-                </Link>
-              </li>
-              <li>
-                <Link href="/blog" className="hover:text-primary transition-colors">
-                  Blog
-                </Link>
-              </li>
-              <li>
-                <Link href="/emi-calculator" className="hover:text-primary transition-colors">
-                  EMI Calculator
-                </Link>
-              </li>
-            </ul>
+          <div className="flex items-start gap-3">
+            <span className="mt-0.5 rounded-lg bg-violet-500/10 p-2 text-violet-600 dark:text-violet-400">
+              <Mail className="h-4 w-4" />
+            </span>
+            <div>
+              <p className="text-xs text-muted-foreground">Email Inquiries</p>
+              <a href={`mailto:${config.email}`} className="font-semibold text-foreground hover:text-violet-600 dark:hover:text-violet-400 transition-colors">
+                {config.email}
+              </a>
+            </div>
           </div>
 
-          <div>
-            <h3 className="text-sm font-semibold text-gray-900 mb-4">Company</h3>
-            <ul className="space-y-3 text-sm text-gray-600">
-              <li>
-                <Link href="/about" className="hover:text-primary transition-colors">
-                  About Us
-                </Link>
-              </li>
-              <li>
-                <Link href="/contact" className="hover:text-primary transition-colors">
-                  Contact Us
-                </Link>
-              </li>
-              <li>
-                <Link href="/partner-program" className="hover:text-primary transition-colors">
-                  Partner Program
-                </Link>
-              </li>
-              <li>
-                <a href="/privacy-policy" className="hover:text-primary transition-colors">
-                  Privacy Policy
-                </a>
-              </li>
-              <li>
-                <a href="/terms-of-service" className="hover:text-primary transition-colors">
-                  Terms of Service
-                </a>
-              </li>
-            </ul>
+          <div className="flex items-start gap-3">
+            <span className="mt-0.5 rounded-lg bg-amber-500/10 p-2 text-amber-600 dark:text-amber-400">
+              <MapPin className="h-4 w-4" />
+            </span>
+            <div>
+              <p className="text-xs text-muted-foreground">Head Office</p>
+              <p className="font-medium text-foreground text-xs leading-relaxed">
+                {config.address}
+              </p>
+            </div>
           </div>
         </div>
 
-        {/* Bottom: copyright + powered by */}
-        <div className="border-t pt-6 flex flex-col md:flex-row justify-between items-center gap-4 text-xs text-gray-500">
-          <p>© {new Date().getFullYear()} ChannelPartner Pro. All rights reserved.</p>
+        {/* Bottom Bar */}
+        <div className="mt-10 flex flex-col items-center justify-between gap-4 border-t border-border pt-6 text-xs text-muted-foreground sm:flex-row">
           <p>
-            RERA Registered Real Estate Channel Partner
-            <span className="ml-1">·</span>
-            <a href="#" className="hover:text-primary transition-colors">
-              Verify RERA
-            </a>
+            {config.copyright}
+          </p>
+          <p className="flex items-center gap-1.5">
+            <span>RERA Reg: {config.reraNumber}</span>
+            <span>·</span>
+            <span>{config.bottomNote}</span>
           </p>
         </div>
       </div>
@@ -168,16 +331,36 @@ export function PublicFooter() {
   );
 }
 
-function SocialIcon({ href, label, children }: { href: string; label: string; children: React.ReactNode }) {
+function SocialIcon({
+  href,
+  label,
+  children,
+}: {
+  href: string;
+  label: string;
+  children: React.ReactNode;
+}) {
   return (
     <a
       href={href}
-      className="w-8 h-8 rounded bg-gray-900 flex items-center justify-center text-white text-sm hover:bg-primary transition-colors"
+      className="grid size-9 place-items-center rounded-xl border border-border bg-background text-muted-foreground transition hover:border-primary/50 hover:bg-primary hover:text-primary-foreground shadow-2xs"
       target="_blank"
       rel="noopener noreferrer"
       aria-label={label}
     >
-      {children}
+      <svg
+        width="16"
+        height="16"
+        fill="none"
+        stroke="currentColor"
+        viewBox="0 0 24 24"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="2"
+        aria-hidden="true"
+      >
+        {children}
+      </svg>
     </a>
   );
 }

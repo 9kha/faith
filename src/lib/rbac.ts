@@ -24,13 +24,53 @@ export type Module =
   | "settings";
 
 export async function hasPermission(
-  roleId: string,
+  targetId: string,
   module: Module,
   action: PermissionAction
 ): Promise<boolean> {
+  // Check if targetId is a userId
+  const user = await db.user.findUnique({
+    where: { id: targetId },
+    include: { role: true },
+  });
+
+  const roleId = user ? user.roleId : targetId;
+  const roleName = user?.role?.name;
+
+  // Super Admin always has full access to all modules and actions
+  if (
+    roleName === "Super Admin" ||
+    roleName === "super-admin" ||
+    roleName === "admin" ||
+    roleName === "superadmin" ||
+    (user?.role && user.role.level >= 90)
+  ) {
+    return true;
+  }
+
+  // If targetId was directly a roleId or role name
+  const role = user?.role || (await db.role.findFirst({
+    where: {
+      OR: [{ id: roleId }, { name: roleId }],
+    },
+  }));
+
+  if (
+    role &&
+    (role.name === "Super Admin" ||
+      role.name === "super-admin" ||
+      role.name === "admin" ||
+      role.name === "superadmin" ||
+      role.level >= 90)
+  ) {
+    return true;
+  }
+
+  const effectiveRoleId = role?.id || roleId;
+
   const rolePermission = await db.rolePermission.findFirst({
     where: {
-      roleId,
+      roleId: effectiveRoleId,
       granted: true,
       permission: {
         module,

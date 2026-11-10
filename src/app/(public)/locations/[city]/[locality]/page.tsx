@@ -1,9 +1,12 @@
+import type { ButtonHTMLAttributes, ElementType, HTMLAttributes } from "react";
+import type { Property } from "@prisma/client";
 import { db } from "@/lib/db";
 import { notFound } from "next/navigation";
 import { Metadata } from "next";
 import Link from "next/link";
 import Image from "next/image";
 import { Home, MapPin } from "lucide-react";
+import { getPrimaryImages } from "@/lib/media";
 
 export const revalidate = 300;
 
@@ -17,7 +20,7 @@ export async function generateMetadata({
   const localityName = locality.replace(/-/g, " ");
 
   return {
-    title: `Flats for Sale in ${localityName}, ${cityName} | ChannelPartner Pro`,
+    title: `Flats for Sale in ${localityName}, ${cityName} | Faith Venture Realty`,
     description: `Find the best flats for sale in ${localityName}, ${cityName}. Verified listings, best prices, RERA registered builders.`,
   };
 }
@@ -49,6 +52,11 @@ export default async function LocationPage({
     notFound();
   }
 
+  const propertyImages = await getPrimaryImages(
+    "Property",
+    properties.map((p) => p.id)
+  );
+
   const avgPrice = properties.length > 0
     ? Math.round(
         properties.reduce((sum, p) => sum + (p.price || 0), 0) /
@@ -60,7 +68,12 @@ export default async function LocationPage({
   return (
     <div className="space-y-0">
       <LocationHero city={cityName} locality={localityName} avgPrice={avgPrice} />
-      <LocationProperties properties={properties} city={cityName} locality={localityName} />
+      <LocationProperties
+        properties={properties}
+        images={propertyImages}
+        city={cityName}
+        locality={localityName}
+      />
       <LocationInfo city={cityName} locality={localityName} />
     </div>
   );
@@ -76,31 +89,31 @@ function LocationHero({
   avgPrice: number;
 }) {
   return (
-    <section className="relative bg-[linear-gradient(135deg,#0f172a_0%,#1e293b_100%)] py-16 lg:py-24 overflow-hidden">
+    <section className="relative bg-background border-b border-border py-16 lg:py-24 overflow-hidden transition-colors">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         <div className="text-center">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary border border-primary/20 text-sm font-medium mb-6">
             <MapPin className="h-4 w-4" />
             {city}, {locality}
           </div>
-          <h1 className="text-4xl md:text-6xl font-serif font-bold text-white tracking-tight mb-6 leading-tight">
-            Flats for Sale in <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-secondary">{`${locality}, ${city}`}</span>
+          <h1 className="text-4xl md:text-6xl font-serif font-bold text-foreground tracking-tight mb-6 leading-tight">
+            Flats for Sale in <span className="text-primary">{`${locality}, ${city}`}</span>
           </h1>
-          <p className="text-lg md:text-xl text-gray-300 mb-8 max-w-2xl mx-auto leading-relaxed">
+          <p className="text-lg md:text-xl text-muted-foreground mb-8 max-w-2xl mx-auto leading-relaxed">
             Find verified flats and apartments for sale in {locality}, {city}.
             RERA registered builders, transparent pricing, and expert guidance.
-            {avgPrice > 0 ? `Average price: ₹${avgPrice} Cr` : ""}
+            {avgPrice > 0 ? ` Average price: ₹${avgPrice} Cr` : ""}
           </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
-            <Button asChild className="px-8 py-3 text-lg bg-white text-gray-900 hover:bg-gray-100">
+            <Button asChild className="px-8 py-3 text-sm font-semibold rounded-xl bg-primary text-primary-foreground hover:bg-primary/90">
               <Link href="/buy">
-                <Home className="mr-2 h-5 w-5" />
+                <Home className="mr-2 h-4 w-4" />
                 Search Properties
               </Link>
             </Button>
-            <Button asChild variant="outline" className="px-8 py-3 text-lg border border-gray-200 text-gray-700 hover:bg-gray-50">
+            <Button asChild variant="outline" className="px-8 py-3 text-sm font-semibold rounded-xl border border-border text-foreground hover:bg-muted">
               <a href="tel:+919876543210" className="flex items-center gap-2">
-                <PhoneSVG className="h-5 w-5" />
+                <PhoneSVG className="h-4 w-4" />
                 Call Us
               </a>
             </Button>
@@ -111,10 +124,23 @@ function LocationHero({
   );
 }
 
-function Button({ children, className, asChild, variant = "default", ...props }: any) {
-  const Comp = asChild ? "span" : "button";
+function Button({
+  children,
+  className,
+  asChild,
+  variant = "default",
+  size = "default",
+  ...props
+}: ButtonHTMLAttributes<HTMLButtonElement> & {
+  asChild?: boolean;
+  variant?: string;
+  size?: string;
+}) {
+  void variant;
+  void size;
+  const Comp: ElementType = asChild ? "span" : "button";
   return (
-    <Comp className={`inline-flex items-center justify-center rounded-md border border-transparent bg-transparent px-4 py-2 text-sm font-medium transition-colors focus:outline-none ${className}`} {...props} asChild={asChild}>
+    <Comp className={`inline-flex items-center justify-center rounded-md border border-transparent bg-transparent px-4 py-2 text-sm font-medium transition-colors focus:outline-none ${className}`} {...(props as HTMLAttributes<HTMLElement>)}>
       {children}
     </Comp>
   );
@@ -130,10 +156,12 @@ function PhoneSVG({ className }: { className?: string }) {
 
 function LocationProperties({
   properties,
+  images,
   city,
   locality,
 }: {
-  properties: any[];
+  properties: Property[];
+  images: Map<string, string>;
   city: string;
   locality: string;
 }) {
@@ -162,7 +190,7 @@ function LocationProperties({
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {properties.map((p) => (
-              <PropertyCard key={p.id} property={p} />
+              <PropertyCard key={p.id} property={p} image={images.get(p.id)} />
             ))}
           </div>
         )}
@@ -171,7 +199,13 @@ function LocationProperties({
   );
 }
 
-function PropertyCard({ property }: { property: any }) {
+function PropertyCard({
+  property,
+  image,
+}: {
+  property: Property;
+  image?: string;
+}) {
   return (
     <Link
       href={`/properties/${property.slug}`}
@@ -179,7 +213,7 @@ function PropertyCard({ property }: { property: any }) {
     >
       <div className="relative h-48 overflow-hidden">
         <Image
-          src="https://images.unsplash.com/photo-1502672260266-1c1ef1d8837f?w=600&h=400&fit=crop"
+          src={image || "/images/property-1.jpg"}
           alt={property.title}
           fill
           className="object-cover group-hover:scale-105 transition-transform duration-500"
