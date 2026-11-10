@@ -1,5 +1,5 @@
 import { execFile } from "child_process";
-import { readFile, stat, rename, unlink, writeFile, copyFile } from "fs/promises";
+import { readFile, stat, rename, unlink, writeFile } from "fs/promises";
 import { join, extname, basename } from "path";
 import { randomUUID } from "crypto";
 
@@ -38,7 +38,6 @@ const CONVERTER_CANDIDATES = [
   "dwg2dxf",
   "/opt/homebrew/bin/dwg2dxf",
   "/usr/local/bin/dwg2dxf",
-  "/usr/bin/dwg2dxf",
 ].filter((candidate): candidate is string => Boolean(candidate));
 
 // On Vercel the filesystem is read-only except /tmp. Use /tmp for all temp CAD work.
@@ -147,7 +146,8 @@ async function needsFreshConversion(
  * `.dwg` uploads are converted with LibreDWG's dwg2dxf and cached next to the
  * original file (`<stored-name>.dxf`), so repeated previews don't re-convert.
  *
- * Supports local storage (./uploads, ./public/uploads) and Vercel remote Blob URLs.
+ * On Vercel the source file is fetched from a public Blob URL into /tmp because
+ * the serverless filesystem is read-only.
  */
 export async function loadCadPreviewDxf(
   src: string
@@ -168,68 +168,24 @@ export async function loadCadPreviewDxf(
     );
   }
 
-  const workSourcePath = join(WORK_DIR, fileName);
+  const sourcePath = join(WORK_DIR, fileName);
   const isRemote = src.startsWith("http://") || src.startsWith("https://");
 
-  // 1. Locate the file: check local upload directories or fetch remote
-  let resolvedSourcePath: string | null = null;
-
-  if (isRemote) {
-    try {
+  try {
+    if (isRemote) {
       await downloadToTemp(src, fileName);
-      resolvedSourcePath = workSourcePath;
-    } catch {
-      // remote download failed
+    } else {
+      await stat(sourcePath);
     }
-  } else {
-    // Check candidate local paths in project
-    const localCandidates = [
-      join(process.cwd(), "uploads", fileName),
-      join(process.cwd(), "public", "uploads", fileName),
-      workSourcePath,
-    ];
-
-    for (const p of localCandidates) {
-      try {
-        await stat(p);
-        resolvedSourcePath = p;
-        break;
-      } catch {
-        // continue
-      }
-    }
-
-    // If not found locally, try remote fallback via BLOB_PUBLIC_BASE_URL if configured
-    if (!resolvedSourcePath && process.env.BLOB_PUBLIC_BASE_URL) {
-      try {
-        const remoteUrl = `${process.env.BLOB_PUBLIC_BASE_URL.replace(/\/$/, "")}/faith_venture_realty/uploads/${fileName}`;
-        await downloadToTemp(remoteUrl, fileName);
-        resolvedSourcePath = workSourcePath;
-      } catch {
-        // ignore
-      }
-    }
-  }
-
-  if (!resolvedSourcePath) {
+  } catch {
     throw new CadPreviewError(
       "not-found",
       `Stored CAD file not found: ${fileName}. It may have been removed from storage.`
     );
   }
 
-  // Ensure file is accessible in WORK_DIR for converter tools
-  if (resolvedSourcePath !== workSourcePath) {
-    try {
-      await copyFile(resolvedSourcePath, workSourcePath);
-    } catch {
-      // ignore if already copied or error
-    }
-  }
-
-  // If already a DXF file, read and return
   if (ext === ".dxf") {
-    const dxf = await readFile(resolvedSourcePath, "utf8");
+    const dxf = await readFile(sourcePath, "utf8");
     if (!dxfLooksValid(dxf)) {
       throw new CadPreviewError(
         "conversion-failed",
@@ -239,27 +195,22 @@ export async function loadCadPreviewDxf(
     return { dxf, source: "dxf-original", converter: null };
   }
 
-  // Check pre-existing cached DXF files across local and work dirs
-  const cachedDxfCandidates = [
-    join(process.cwd(), "uploads", fileName + ".dxf"),
-    join(process.cwd(), "public", "uploads", fileName + ".dxf"),
-    join(WORK_DIR, fileName + ".dxf"),
-  ];
+  const cachePath = sourcePath + ".dxf";
+  const needsConversion = await needsFreshConversion(cachePath, sourcePath);
 
-  for (const cPath of cachedDxfCandidates) {
+  if (!needsConversion) {
     try {
-      const cached = await readFile(cPath, "utf8");
+      const cached = await readFile(cachePath, "utf8");
       if (dxfLooksValid(cached)) {
         return { dxf: cached, source: "dwg-converted", converter: null };
       }
     } catch {
-      // not found in this candidate
+      // Cache missing or corrupt -> re-convert below.
     }
   }
 
-  // Check file size limit
   try {
-    const sourceStat = await stat(resolvedSourcePath);
+    const sourceStat = await stat(sourcePath);
     if (sourceStat.size > 50 * 1024 * 1024) {
       throw new CadPreviewError(
         "unsupported-format",
@@ -270,14 +221,12 @@ export async function loadCadPreviewDxf(
     if (error instanceof CadPreviewError) throw error;
   }
 
-  // Run conversion with dwg2dxf
   const command = await locateConverter();
-  const tmpName = `.dxf-preview-${randomUUID().slice(0, 8)}-${fileName}.dxf`;
+  const tmpName = `.dxf-preview-${randomUUID().slice(0, 8)}-${basename(cachePath)}`;
   const tmpPath = join(WORK_DIR, tmpName);
-  const cachePath = join(WORK_DIR, fileName + ".dxf");
 
   try {
-    await runConverter(command, ["-y", "-o", tmpPath, workSourcePath], WORK_DIR);
+    await runConverter(command, ["-y", "-o", tmpPath, sourcePath], WORK_DIR);
     const converted = await readFile(tmpPath, "utf8");
     if (!dxfLooksValid(converted)) {
       throw new CadPreviewError(
@@ -285,22 +234,7 @@ export async function loadCadPreviewDxf(
         "Converted DWG contained no readable drawing entities. The file may be corrupted or not a real DWG drawing."
       );
     }
-
-    // Cache in WORK_DIR
     await rename(tmpPath, cachePath);
-
-    // Also persist cache to uploads/ and public/uploads/ so it never needs conversion again
-    try {
-      await copyFile(cachePath, join(process.cwd(), "uploads", fileName + ".dxf"));
-    } catch {
-      // ignore
-    }
-    try {
-      await copyFile(cachePath, join(process.cwd(), "public", "uploads", fileName + ".dxf"));
-    } catch {
-      // ignore
-    }
-
     return { dxf: converted, source: "dwg-converted", converter: command };
   } catch (error) {
     if (error instanceof CadPreviewError) throw error;
